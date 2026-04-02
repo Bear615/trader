@@ -69,6 +69,14 @@ DEFAULTS: dict[str, tuple[Any, str]] = {
     "kraken_pair":                          ("XXRPZUSD", "Kraken trading pair symbol (e.g. XXRPZUSD)"),
     "kraken_order_type":                    ("market", "Order type for Kraken trades: 'market' or 'limit'"),
     "kraken_balance_sync_interval_minutes": (20,   "How often (minutes) to reconcile local portfolio balances with Kraken in live mode"),
+
+    # --- Telegram Notifications ---
+    "telegram_enabled":                     (False, "Send trade and AI decision notifications to a Telegram chat"),
+    "telegram_bot_token":                   ("",    "Telegram bot token from @BotFather (e.g. 123456:ABC-...)"),
+    "telegram_chat_id":                     ("",    "Telegram chat ID or @channel_username to send notifications to"),
+    "telegram_notify_trades":               (True,  "Send a message when a trade is executed"),
+    "telegram_notify_decisions":            (True,  "Send a message when the AI makes a decision (including HOLD)"),
+    "telegram_notify_errors":               (False, "Send a message when a trade fails or an error occurs"),
 }
 
 

@@ -147,7 +147,7 @@ const groups = computed(() => [
     id: 'ai',
     label: 'AI Configuration',
     icon: 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z',
-    keys: ['ai_enabled', 'ai_model', 'ai_temperature', 'ai_decision_interval_seconds', 'ai_price_window', 'ai_max_prompt_tokens', 'ai_max_trade_pct', 'ai_system_prompt'],
+    keys: ['ai_enabled', 'ai_model', 'ai_temperature', 'ai_decision_interval_seconds', 'ai_price_window', 'ai_max_prompt_tokens', 'ai_price_change_threshold_pct', 'ai_max_trade_pct', 'ai_system_prompt'],
   },
   {
     id: 'ai_provider',
@@ -160,6 +160,12 @@ const groups = computed(() => [
     label: 'Risk Management',
     icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
     keys: ['risk_stop_loss_pct', 'risk_take_profit_pct', 'risk_max_daily_trades', 'risk_max_drawdown_pct', 'risk_min_trade_usd', 'risk_max_position_pct'],
+  },
+  {
+    id: 'notifications',
+    label: 'Notifications',
+    icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9',
+    keys: ['telegram_enabled', 'telegram_bot_token', 'telegram_chat_id', 'telegram_notify_trades', 'telegram_notify_decisions', 'telegram_notify_errors'],
   },
   {
     id: 'display',

@@ -420,6 +420,9 @@ async def make_decision(db: Session, bypass_guards: bool = False) -> Optional[AI
 
         await ws_manager.broadcast("decisions", decision.to_dict(include_raw=True))
 
+        from app.services.telegram_service import notify_decision
+        await notify_decision(db, decision)
+
         logger.info(
             "AI decision: %s %.4f XRP (conf=%.2f) — %s",
             action, xrp_amount or 0, confidence, reasoning[:60],

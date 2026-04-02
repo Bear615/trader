@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import api from '@/api/client'
 import { useSettingsStore } from '@/stores/settings'
+import { usePortfolioStore } from '@/stores/portfolio'
 import type { Trade, PaginatedResponse } from '@/api/types'
 
 export const useTradesStore = defineStore('trades', () => {
@@ -37,6 +38,10 @@ export const useTradesStore = defineStore('trades', () => {
       items.value.unshift(trade)
       total.value++
       if (items.value.length > perPage.value) items.value.pop()
+      // Refresh portfolio stats and metrics so dashboard stat cards update live
+      const portfolioStore = usePortfolioStore()
+      portfolioStore.fetchPortfolio()
+      portfolioStore.fetchMetrics()
     }
     socket.onclose = () => {
       ws.value = null

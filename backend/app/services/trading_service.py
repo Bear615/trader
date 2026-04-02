@@ -188,6 +188,9 @@ async def _execute_paper_trade(
     avg_buy = _avg_buy_price(db)
     await ws_manager.broadcast("trades", trade.to_dict(avg_buy))
 
+    from app.services.telegram_service import notify_trade
+    await notify_trade(db, trade)
+
     logger.info(
         "Trade executed: %s %.6f XRP @ $%.6f (fee $%.4f)",
         action, xrp_amount, current_price, fee_usd,
@@ -293,6 +296,9 @@ async def _execute_live_trade(
 
     avg_buy = _avg_buy_price(db)
     await ws_manager.broadcast("trades", trade.to_dict(avg_buy))
+
+    from app.services.telegram_service import notify_trade
+    await notify_trade(db, trade)
 
     logger.info(
         "Live trade executed: %s %.6f XRP @ $%.6f via Kraken (order %s)",
