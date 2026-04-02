@@ -16,10 +16,10 @@ if [ ! -d "venv" ]; then
 fi
 
 source venv/bin/activate
-pip install -r requirements.txt --quiet
+venv/bin/pip install -r requirements.txt --quiet
 
 echo ""
 echo "Backend starting at http://localhost:8000"
 echo "API docs: http://localhost:8000/docs"
 echo ""
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+venv/bin/uvicorn main:app --reload --host 0.0.0.0 --port 8000
