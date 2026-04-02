@@ -1,0 +1,284 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  :root {
+    --scrollbar-track: #0d1117;
+    --scrollbar-thumb: #30363d;
+    --scrollbar-thumb-hover: #484f58;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+  }
+}
+
+@layer components {
+  /* ---- Cards ---- */
+  .card {
+    @apply bg-white/[0.03] backdrop-blur-xl border border-white/[0.08]
+           rounded-2xl p-6 shadow-[0_8px_32px_0_rgba(0,0,0,0.36)]
+           transition-all duration-300 relative overflow-hidden
+           hover:shadow-[0_8px_32px_0_rgba(56,189,248,0.12)] hover:-translate-y-1 
+           hover:border-white/[0.15] hover:bg-white/[0.05];
+  }
+
+  .card-sm {
+    @apply bg-white/[0.03] backdrop-blur-xl border border-white/[0.08]
+           rounded-xl p-4 shadow-[0_4px_24px_0_rgba(0,0,0,0.3)]
+           transition-all duration-300 relative overflow-hidden
+           hover:shadow-[0_8px_32px_0_rgba(56,189,248,0.12)] hover:-translate-y-0.5 
+           hover:border-white/[0.15] hover:bg-white/[0.05];
+  }
+
+  /* ---- Inputs ---- */
+  .input {
+    @apply w-full bg-black/40 border border-white/[0.08] rounded-xl px-4 py-2.5
+           text-sm text-gray-100 placeholder-gray-500
+           transition-all duration-300 backdrop-blur-md shadow-inner
+           focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500/50
+           focus:bg-black/60 hover:border-white/[0.15] focus:shadow-[0_0_15px_rgba(56,189,248,0.2)];
+  }
+
+  .input-sm {
+    @apply w-full bg-black/40 border border-white/[0.08] rounded-lg px-3 py-2
+           text-xs text-gray-100 placeholder-gray-500
+           transition-all duration-300 backdrop-blur-md shadow-inner
+           focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500/50
+           focus:bg-black/60 hover:border-white/[0.15] focus:shadow-[0_0_10px_rgba(56,189,248,0.2)];
+  }
+
+  .select {
+    @apply input appearance-none cursor-pointer;
+  }
+
+  .textarea {
+    @apply input resize-y min-h-[80px];
+  }
+
+  /* ---- Buttons ---- */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold
+           transition-all duration-300 ease-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-black
+           disabled:opacity-40 disabled:cursor-not-allowed select-none cursor-pointer
+           active:scale-95 shadow-lg relative overflow-hidden backdrop-blur-md;
+  }
+
+  .btn-primary {
+    @apply bg-sky-500/80 hover:bg-sky-400 text-white border border-sky-400/50 
+           hover:shadow-[0_0_20px_rgba(56,189,248,0.4)] hover:-translate-y-0.5
+           active:bg-sky-600 focus:ring-sky-500;
+  }
+
+  .btn-ghost {
+    @apply bg-white/[0.03] hover:bg-white/[0.08] text-gray-300 hover:text-white
+           border border-white/[0.08] hover:border-white/[0.2] 
+           hover:shadow-[0_0_15px_rgba(255,255,255,0.05)] hover:-translate-y-0.5;
+  }
+
+  .btn-danger {
+    @apply bg-rose-500/80 hover:bg-rose-400 text-white border border-rose-400/50
+           hover:shadow-[0_0_20px_rgba(251,113,133,0.4)] hover:-translate-y-0.5
+           active:bg-rose-600 focus:ring-rose-500;
+  }
+
+  .btn-success {
+    @apply bg-emerald-500/80 hover:bg-emerald-400 text-white border border-emerald-400/50
+           hover:shadow-[0_0_20px_rgba(52,211,153,0.4)] hover:-translate-y-0.5
+           active:bg-emerald-600 focus:ring-emerald-500;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs rounded-lg;
+  }
+
+  /* ---- Badges ---- */
+  .badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border backdrop-blur-md shadow-sm transition-all duration-300 hover:scale-105;
+  }
+
+  .badge-buy {
+    @apply bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)];
+  }
+
+  .badge-sell {
+    @apply bg-rose-500/20 text-rose-300 border-rose-500/40 shadow-[0_0_10px_rgba(244,63,94,0.2)];
+  }
+
+  .badge-hold {
+    @apply bg-gray-500/20 text-gray-300 border-gray-500/40;
+  }
+
+  .badge-ai {
+    @apply bg-sky-500/20 text-sky-300 border-sky-500/40 shadow-[0_0_10px_rgba(56,189,248,0.2)];
+  }
+
+  /* ---- Tables ---- */
+  .table-wrapper {
+    @apply overflow-x-auto rounded-2xl border border-white/[0.08] backdrop-blur-xl bg-white/[0.02] shadow-[0_8px_32px_0_rgba(0,0,0,0.36)];
+  }
+
+  .table {
+    @apply w-full text-sm;
+  }
+
+  .table thead {
+    @apply bg-black/40 border-b border-white/[0.08];
+  }
+
+  .table th {
+    @apply px-5 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap;
+  }
+
+  .table td {
+    @apply px-5 py-4 text-gray-200 whitespace-nowrap border-b border-white/[0.04];
+  }
+
+  .table tbody tr {
+    @apply hover:bg-white/[0.06] transition-all duration-300 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)];
+  }
+
+  /* ---- Form labels ---- */
+  .label {
+    @apply block text-xs font-medium text-gray-400 mb-1.5;
+  }
+
+  /* ---- Stat cards ---- */
+  .stat-value {
+    @apply text-2xl font-bold font-mono tabular-nums;
+  }
+
+  .stat-label {
+    @apply text-xs text-gray-500 uppercase tracking-wider font-medium;
+  }
+
+  /* ---- Live indicator dot ---- */
+  .live-dot {
+    @apply w-2 h-2 rounded-full;
+  }
+
+  /* ---- Toggle ---- */
+  .toggle-track {
+    @apply relative inline-flex items-center w-11 h-6 rounded-full cursor-pointer
+           transition-colors duration-200 focus:outline-none focus:ring-2
+           focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-surface-900;
+  }
+
+  .toggle-thumb {
+    @apply absolute left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200;
+  }
+}
+
+/* ─── ApexCharts dark overrides ─── */
+.apexcharts-tooltip {
+  background: #161b22 !important;
+  border: 1px solid #30363d !important;
+  color: #e6edf3 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
+}
+.apexcharts-tooltip-title {
+  background: #0d1117 !important;
+  border-bottom: 1px solid #30363d !important;
+}
+.apexcharts-xaxistooltip,
+.apexcharts-yaxistooltip {
+  background: #161b22 !important;
+  border: 1px solid #30363d !important;
+  color: #e6edf3 !important;
+}
+.apexcharts-menu {
+  background: #161b22 !important;
+  border: 1px solid #30363d !important;
+  color: #e6edf3 !important;
+}
+.apexcharts-menu-item:hover {
+  background: #21262d !important;
+}
+
+/* ─── Keyframe Animations ─── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ─── Animation Utilities ─── */
+.animate-fade-up   { animation: fade-up   0.38s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-fade-in   { animation: fade-in   0.25s ease both; }
+.animate-scale-in  { animation: scale-in  0.32s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* ─── Stagger Delays ─── */
+.delay-50  { animation-delay:  50ms; }
+.delay-100 { animation-delay: 100ms; }
+.delay-150 { animation-delay: 150ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-250 { animation-delay: 250ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
+
+/* ─── Auto-stagger list children ─── */
+.animate-list > *  { animation: fade-up 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-list > *:nth-child(1)  { animation-delay:   0ms; }
+.animate-list > *:nth-child(2)  { animation-delay:  45ms; }
+.animate-list > *:nth-child(3)  { animation-delay:  90ms; }
+.animate-list > *:nth-child(4)  { animation-delay: 135ms; }
+.animate-list > *:nth-child(5)  { animation-delay: 180ms; }
+.animate-list > *:nth-child(6)  { animation-delay: 225ms; }
+.animate-list > *:nth-child(7)  { animation-delay: 270ms; }
+.animate-list > *:nth-child(8)  { animation-delay: 315ms; }
+.animate-list > *:nth-child(9)  { animation-delay: 360ms; }
+.animate-list > *:nth-child(10) { animation-delay: 405ms; }
+
+/* ─── Page Transitions ─── */
+.page-enter-active {
+  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.page-leave-active {
+  /* instant leave — taken out of flow so it can't block the incoming page */
+  transition: opacity 0.08s ease;
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  pointer-events: none;
+}
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.page-leave-to {
+  opacity: 0;
+}
