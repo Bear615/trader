@@ -377,7 +377,12 @@ async def make_decision(db: Session, bypass_guards: bool = False) -> Optional[AI
                 args = json.loads(content)
 
         action = args["action"].upper()
-        xrp_amount = args.get("xrp_amount")
+        xrp_amount_raw = args.get("xrp_amount")
+        # Ensure xrp_amount is a float (AI may return string or null)
+        try:
+            xrp_amount = float(xrp_amount_raw) if xrp_amount_raw is not None else None
+        except (ValueError, TypeError):
+            xrp_amount = None
         confidence = float(args.get("confidence", 0.5))
         reasoning = args.get("reasoning", "")
 

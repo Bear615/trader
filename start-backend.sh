@@ -9,10 +9,16 @@ if [ ! -f ".env" ]; then
     fi
 fi
 
-# Create venv if needed
-if [ ! -d "venv" ]; then
+# Create venv if missing or broken
+if [ ! -f "venv/bin/activate" ]; then
     echo "Creating virtual environment..."
+    rm -rf venv
     python3 -m venv venv
+fi
+
+if [ ! -f "venv/bin/activate" ]; then
+    echo "ERROR: Virtual environment creation failed. Please run: sudo apt-get install python3-venv"
+    exit 1
 fi
 
 source venv/bin/activate

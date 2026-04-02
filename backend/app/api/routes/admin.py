@@ -7,15 +7,19 @@ from datetime import datetime
 import csv
 import io
 
+import logging
+
 from app.core.database import get_db, SessionLocal
 from app.core.auth import require_admin
 from app.models.backtest import BacktestRun
-from app.services.settings_service import get_all_settings, set_many_settings, get_setting_meta
+from app.services.settings_service import get_all_settings, set_many_settings, get_setting_meta, get_setting
 from app.services.trading_service import reset_portfolio, get_portfolio, execute_trade
 from app.services.price_service import get_latest_price, seed_from_coingecko, prune_old_prices
 from app.services.backtest_service import run_backtest
 from app.models.price import PricePoint
 from app.models.trade import Trade
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)])
 
@@ -39,12 +43,43 @@ class SettingsUpdate(BaseModel):
 
 
 @router.put("/settings")
-def update_settings(body: SettingsUpdate, db: Session = Depends(get_db)):
+async def update_settings(body: SettingsUpdate, db: Session = Depends(get_db)):
     from fastapi import HTTPException
+
+    # Detect if we're switching into live mode (not already live)
+    switching_to_live = (
+        body.updates.get("trading_mode") == "live"
+        and get_setting(db, "trading_mode") != "live"
+    )
+
     try:
         set_many_settings(db, body.updates)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+    if switching_to_live:
+        # Resolve credentials — may have been included in this same update
+        api_key = body.updates.get("kraken_api_key") or get_setting(db, "kraken_api_key")
+        api_secret = body.updates.get("kraken_api_secret") or get_setting(db, "kraken_api_secret")
+        if api_key and api_secret:
+            try:
+                from app.services.kraken_service import get_balances
+                balances = await get_balances(api_key, api_secret)
+                portfolio = get_portfolio(db)
+                latest = get_latest_price(db)
+                current_price = latest.price if latest else 0.0
+                portfolio.usd_balance = balances["usd"]
+                portfolio.xrp_balance = balances["xrp"]
+                portfolio.starting_budget = portfolio.total_value_usd(current_price)
+                portfolio.updated_at = datetime.utcnow()
+                db.commit()
+                logger.info(
+                    "Switched to live trading — synced Kraken balances: USD=%.2f XRP=%.6f, starting_budget=%.2f",
+                    balances["usd"], balances["xrp"], portfolio.starting_budget,
+                )
+            except Exception as exc:
+                logger.warning("Failed to sync Kraken balances on switch to live mode: %s", exc)
+
     return {"ok": True, "updated": list(body.updates.keys())}
 
 
