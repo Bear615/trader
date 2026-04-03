@@ -32,12 +32,12 @@ onUnmounted(() => {
   <SiteLock v-if="!siteUnlocked" @unlocked="onUnlocked" />
 
   <div v-else class="flex h-screen bg-surface-950 overflow-hidden relative">
-    <!-- Ambient glow blobs -->
-    <div class="absolute inset-0 pointer-events-none overflow-hidden mix-blend-screen" aria-hidden="true">
-      <div class="absolute -top-40 left-1/3 w-[600px] h-[600px] rounded-full blur-[140px] bg-sky-500/[0.12] animate-pulse" style="animation-duration: 8s" />
-      <div class="absolute -bottom-32 right-1/4 w-[500px] h-[500px] rounded-full blur-[120px] bg-violet-500/[0.1] animate-pulse" style="animation-duration: 12s" />
-      <div class="absolute top-1/2 -left-20 w-[300px] h-[300px] rounded-full blur-[100px] bg-indigo-500/[0.1] animate-pulse" style="animation-duration: 10s" />
-    </div>
+    <!-- Subtle dot-grid texture — static, zero JS cost -->
+    <div
+      class="absolute inset-0 pointer-events-none"
+      aria-hidden="true"
+      style="background-image: radial-gradient(circle, #27272a 1px, transparent 1px); background-size: 28px 28px; opacity: 0.5;"
+    />
 
     <!-- Sidebar -->
     <SidebarNav />

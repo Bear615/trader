@@ -36,10 +36,13 @@ export const usePriceStore = defineStore('price', () => {
   function connectWebSocket() {
     if (ws.value) return
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
-    const key = encodeURIComponent(useSettingsStore().adminKey)
-    const socket = new WebSocket(`${protocol}://${window.location.host}/ws/price?key=${key}`)
+    const socket = new WebSocket(`${protocol}://${window.location.host}/ws/price`)
 
-    socket.onopen = () => { connected.value = true }
+    socket.onopen = () => {
+      // Send auth as first message — key must never appear in the URL
+      socket.send(JSON.stringify({ auth: useSettingsStore().adminKey }))
+      connected.value = true
+    }
     socket.onmessage = (event) => {
       const point: PricePoint = JSON.parse(event.data)
       current.value = point

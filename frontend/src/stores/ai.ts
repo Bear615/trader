@@ -34,8 +34,11 @@ export const useAIStore = defineStore('ai', () => {
   function connectWebSocket() {
     if (ws.value) return
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
-    const key = encodeURIComponent(useSettingsStore().adminKey)
-    const socket = new WebSocket(`${protocol}://${window.location.host}/ws/decisions?key=${key}`)
+    const socket = new WebSocket(`${protocol}://${window.location.host}/ws/decisions`)
+    socket.onopen = () => {
+      // Send auth as first message — key must never appear in the URL
+      socket.send(JSON.stringify({ auth: useSettingsStore().adminKey }))
+    }
     socket.onmessage = (e) => {
       const decision: AIDecision = JSON.parse(e.data)
       items.value.unshift(decision)

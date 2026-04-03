@@ -28,5 +28,10 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     portfolio.value = res.data
   }
 
-  return { portfolio, metrics, loading, fetchPortfolio, fetchMetrics, resetPortfolio }
+  async function resetROI() {
+    const res = await api.post<Portfolio>('/admin/portfolio/reset-roi')
+    portfolio.value = res.data
+  }
+
+  return { portfolio, metrics, loading, fetchPortfolio, fetchMetrics, resetPortfolio, resetROI }
 })

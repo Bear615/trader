@@ -144,6 +144,7 @@ def create_app() -> FastAPI:
             response.headers["X-Frame-Options"] = "DENY"
             response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
             response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
             # Only set CSP for non-WebSocket responses
             if not request.url.path.startswith("/ws"):
                 response.headers["Content-Security-Policy"] = (

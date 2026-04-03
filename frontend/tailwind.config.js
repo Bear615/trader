@@ -8,19 +8,20 @@ export default {
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
       },
       colors: {
+        // Institutional dark surface scale (zinc-based, opaque)
         surface: {
-          950: '#030712',
-          900: '#0d1117',
-          800: '#161b22',
-          700: '#21262d',
-          600: '#30363d',
-          500: '#484f58',
+          950: '#09090b',  // zinc-950
+          900: '#18181b',  // zinc-900
+          800: '#27272a',  // zinc-800
+          700: '#3f3f46',  // zinc-700
+          600: '#52525b',  // zinc-600
+          500: '#71717a',  // zinc-500
         },
         accent: {
-          buy: '#10b981',      // emerald-500
-          sell: '#f43f5e',     // rose-500
-          ai: '#38bdf8',       // sky-400
-          warning: '#f59e0b',  // amber-500
+          primary: '#f59e0b',  // amber-500   — primary UI accent
+          buy:     '#10b981',  // emerald-500 — buy / profit
+          sell:    '#f43f5e',  // rose-500    — sell / loss
+          muted:   '#71717a',  // zinc-500    — secondary text / hold
         },
       },
     },

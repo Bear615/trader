@@ -55,6 +55,20 @@ def reset_portfolio(db: Session) -> Portfolio:
     return portfolio
 
 
+def reset_roi(db: Session) -> Portfolio:
+    """Reset ROI baseline to the current portfolio value without touching balances."""
+    from app.services.price_service import get_latest_price
+    portfolio = get_portfolio(db)
+    latest = get_latest_price(db)
+    current_price = latest.price if latest else 0.0
+    portfolio.starting_budget = portfolio.total_value_usd(current_price)
+    portfolio.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(portfolio)
+    logger.info("ROI reset — new baseline $%.2f", portfolio.starting_budget)
+    return portfolio
+
+
 # ---------------------------------------------------------------------------
 # Risk checks
 # ---------------------------------------------------------------------------

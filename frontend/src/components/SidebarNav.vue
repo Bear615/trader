@@ -22,16 +22,17 @@ const currentModel = computed(() => {
 </script>
 
 <template>
-  <aside class="w-64 flex-shrink-0 bg-black/40 backdrop-blur-3xl border-r border-white/[0.08] flex flex-col relative z-20 shadow-[4px_0_30px_rgba(0,0,0,0.1)]">
-    <!-- Logo -->
-    <div class="h-20 flex items-center px-6 border-b border-white/[0.08] flex-shrink-0">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-sky-500/20 border border-sky-400/40 flex items-center justify-center flex-shrink-0 shadow-[0_0_20px_rgba(56,189,248,0.2)]">
-          <span class="text-sky-300 text-xs font-black tracking-widest">XRP</span>
+  <aside class="w-56 flex-shrink-0 bg-surface-950 border-r border-surface-800 flex flex-col relative z-20">
+    <!-- Logo / wordmark -->
+    <div class="h-14 flex items-center px-5 border-b border-surface-800 flex-shrink-0">
+      <div class="flex items-center gap-2.5">
+        <!-- Amber accent square -->
+        <div class="w-7 h-7 rounded bg-amber-500 flex items-center justify-center flex-shrink-0">
+          <span class="text-zinc-950 text-[10px] font-black tracking-tight leading-none">XRP</span>
         </div>
         <div class="min-w-0">
-          <div class="text-sm font-bold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 leading-tight">AI Trader</div>
-          <div class="text-[10px] text-sky-400/80 uppercase font-semibold tracking-wider leading-tight mt-0.5">Paper Trading Lab</div>
+          <div class="text-sm font-bold tracking-tight text-zinc-100 leading-tight">AI Trader</div>
+          <div class="text-[10px] text-zinc-500 leading-tight mt-px">Paper Trading Lab</div>
         </div>
       </div>
     </div>
@@ -42,25 +43,25 @@ const currentModel = computed(() => {
         v-for="item in nav"
         :key="item.to"
         :to="item.to"
-        class="group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 relative overflow-hidden"
+        class="group flex items-center gap-2.5 px-3 py-2 rounded text-sm font-medium transition-colors duration-150 relative"
         :class="route.path === item.to
-          ? 'bg-sky-500/15 text-sky-400 shadow-[inset_0_0_0_1px_rgba(56,189,248,0.2),0_0_20px_rgba(56,189,248,0.15)] translate-x-1'
-          : 'text-gray-400 hover:text-gray-100 hover:bg-white/[0.06] hover:translate-x-1'"
+          ? 'bg-surface-800 text-amber-400 border-l-2 border-l-amber-500 pl-[10px]'
+          : 'text-zinc-500 hover:text-zinc-100 hover:bg-surface-800 border-l-2 border-l-transparent pl-[10px]'"
       >
-        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" :d="item.icon" />
         </svg>
         <span class="truncate">{{ item.name }}</span>
         <span
           v-if="item.name === 'Admin' && settingsStore.isAdmin"
-          class="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/25 font-semibold flex-shrink-0"
+          class="ml-auto text-[9px] px-1.5 py-px rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 font-bold flex-shrink-0"
         >ADMIN</span>
       </RouterLink>
     </nav>
 
     <!-- Footer -->
-    <div class="px-4 py-3 border-t border-white/[0.08] flex-shrink-0">
-      <p class="text-[10px] text-gray-600 leading-relaxed">
+    <div class="px-5 py-3 border-t border-surface-800 flex-shrink-0">
+      <p class="text-[10px] text-zinc-600 leading-relaxed">
         Data: DIA Oracle · XRPL<br />Model: {{ currentModel }}
       </p>
     </div>

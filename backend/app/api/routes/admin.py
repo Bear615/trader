@@ -13,7 +13,7 @@ from app.core.database import get_db, SessionLocal
 from app.core.auth import require_admin
 from app.models.backtest import BacktestRun
 from app.services.settings_service import get_all_settings, set_many_settings, get_setting_meta, get_setting
-from app.services.trading_service import reset_portfolio, get_portfolio, execute_trade
+from app.services.trading_service import reset_portfolio, reset_roi, get_portfolio, execute_trade
 from app.services.price_service import get_latest_price, seed_from_coingecko, prune_old_prices
 from app.services.backtest_service import run_backtest
 from app.models.price import PricePoint
@@ -90,6 +90,12 @@ async def update_settings(body: SettingsUpdate, db: Session = Depends(get_db)):
 @router.post("/portfolio/reset")
 def reset(db: Session = Depends(get_db)):
     portfolio = reset_portfolio(db)
+    return portfolio.to_dict()
+
+
+@router.post("/portfolio/reset-roi")
+def reset_roi_endpoint(db: Session = Depends(get_db)):
+    portfolio = reset_roi(db)
     return portfolio.to_dict()
 
 

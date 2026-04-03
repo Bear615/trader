@@ -31,8 +31,11 @@ export const useTradesStore = defineStore('trades', () => {
   function connectWebSocket() {
     if (ws.value) return
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
-    const key = encodeURIComponent(useSettingsStore().adminKey)
-    const socket = new WebSocket(`${protocol}://${window.location.host}/ws/trades?key=${key}`)
+    const socket = new WebSocket(`${protocol}://${window.location.host}/ws/trades`)
+    socket.onopen = () => {
+      // Send auth as first message — key must never appear in the URL
+      socket.send(JSON.stringify({ auth: useSettingsStore().adminKey }))
+    }
     socket.onmessage = (e) => {
       const trade: Trade = JSON.parse(e.data)
       items.value.unshift(trade)

@@ -14,6 +14,10 @@ class ConnectionManager:
         await websocket.accept()
         self._channels.setdefault(channel, []).append(websocket)
 
+    def connect_accepted(self, channel: str, websocket: WebSocket):
+        """Register an already-accepted WebSocket (auth was done before calling this)."""
+        self._channels.setdefault(channel, []).append(websocket)
+
     def disconnect(self, channel: str, websocket: WebSocket):
         if channel in self._channels:
             self._channels[channel] = [

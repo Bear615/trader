@@ -8,18 +8,18 @@ export const useSettingsStore = defineStore('settings', () => {
   const meta = ref<SettingsResponse['meta']>({})
   const loading = ref(false)
   const saving = ref(false)
-  const adminKey = ref(localStorage.getItem('adminKey') || '')
+  const adminKey = ref(sessionStorage.getItem('adminKey') || '')
 
   const isAdmin = computed(() => adminKey.value.length > 0)
 
   function setAdminKey(key: string) {
     adminKey.value = key
-    localStorage.setItem('adminKey', key)
+    sessionStorage.setItem('adminKey', key)
   }
 
   function clearAdminKey() {
     adminKey.value = ''
-    localStorage.removeItem('adminKey')
+    sessionStorage.removeItem('adminKey')
   }
 
   async function fetchSettings() {

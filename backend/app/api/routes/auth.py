@@ -48,14 +48,15 @@ async def login(body: LoginRequest, request: Request):
     Verify a PIN and return the session token on success.
     Rate-limited to 5 attempts per IP per 15 minutes.
     Set LOGIN_PIN in .env; falls back to ADMIN_API_KEY if LOGIN_PIN is not set.
+
+    X-Forwarded-For is intentionally ignored to prevent header-spoofing bypasses.
+    Rate limiting is always keyed on the direct TCP peer address.  If you run
+    this behind a trusted reverse proxy, terminate TLS at the proxy and use
+    the proxy's own rate-limiting facilities instead.
     """
-    # Resolve the real client IP, accounting for a reverse proxy
-    forwarded_for = request.headers.get("X-Forwarded-For")
-    ip = (
-        forwarded_for.split(",")[0].strip()
-        if forwarded_for
-        else (request.client.host if request.client else "unknown")
-    )
+    # Always use the real TCP peer — never trust client-supplied headers for
+    # rate limiting, because an attacker can rotate them to bypass limits.
+    ip = request.client.host if request.client else "unknown"
 
     _check_rate_limit(ip)
 

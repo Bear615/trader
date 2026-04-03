@@ -8,7 +8,7 @@ const api = axios.create({
 
 // Inject admin key on every request if stored
 api.interceptors.request.use((cfg) => {
-  const key = localStorage.getItem('adminKey')
+  const key = sessionStorage.getItem('adminKey')
   if (key) cfg.headers['X-Admin-Key'] = key
   return cfg
 })

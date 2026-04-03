@@ -48,6 +48,18 @@ const roiLabel = computed(() =>
   roiPct.value !== null ? (roiPositive.value ? '+' : '') + roiPct.value.toFixed(2) + '%' : '—'
 )
 const winRateGood = computed(() => (m.value?.win_rate_pct ?? 0) >= 50)
+
+const resettingROI = ref(false)
+async function handleResetROI() {
+  if (!confirm('Reset ROI baseline to current portfolio value?')) return
+  resettingROI.value = true
+  try {
+    await portfolioStore.resetROI()
+    await portfolioStore.fetchMetrics()
+  } finally {
+    resettingROI.value = false
+  }
+}
 </script>
 
 <template>
@@ -77,6 +89,11 @@ const winRateGood = computed(() => (m.value?.win_rate_pct ?? 0) >= 50)
               ]"
             >{{ roiLabel }}</span>
             <span class="text-xs text-gray-600 ml-2">all-time return</span>
+            <button
+              @click="handleResetROI"
+              :disabled="resettingROI"
+              class="ml-3 text-[10px] text-gray-500 hover:text-gray-300 border border-white/10 hover:border-white/20 rounded px-1.5 py-0.5 transition-colors disabled:opacity-40"
+            >Reset ROI</button>
           </div>
         </div>
         <div class="pt-3 border-t border-white/[0.06] grid grid-cols-2 gap-4">

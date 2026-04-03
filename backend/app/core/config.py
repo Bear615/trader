@@ -23,3 +23,10 @@ class Config(BaseSettings):
 
 
 config = Config()
+
+# Refuse to start with a weak or default admin key
+if config.admin_api_key in ("change-me", "greatness", "") or len(config.admin_api_key) < 20:
+    raise RuntimeError(
+        "ADMIN_API_KEY is too weak or still set to the default value. "
+        "Set a strong random secret (≥20 characters) in your .env file before starting."
+    )

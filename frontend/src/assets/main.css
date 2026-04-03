@@ -8,6 +8,261 @@
   }
 
   :root {
+    --scrollbar-track: #09090b;
+    --scrollbar-thumb: #3f3f46;
+    --scrollbar-thumb-hover: #52525b;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 2px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+  }
+}
+
+@layer components {
+  /* ─── Cards ─────────────────────────────────────────────────────────────── */
+
+  /* Base card — flat, opaque, bordered */
+  .card {
+    @apply bg-surface-900 border border-surface-800
+           rounded-lg p-6 shadow-sm
+           transition-colors duration-150 relative overflow-hidden;
+  }
+
+  /* Top-accent variant — amber stripe at the top for hero/primary cards */
+  .card-accent {
+    @apply card border-t-2 border-t-amber-500;
+  }
+
+  .card-sm {
+    @apply bg-surface-900 border border-surface-800
+           rounded-md p-4 shadow-sm
+           transition-colors duration-150 relative overflow-hidden;
+  }
+
+  /* ─── Inputs ─────────────────────────────────────────────────────────────── */
+
+  .input {
+    @apply w-full bg-surface-950 border border-surface-700 rounded-md px-3.5 py-2.5
+           text-sm text-zinc-100 placeholder-zinc-600
+           transition-colors duration-150
+           focus:outline-none focus:ring-1 focus:ring-amber-500 focus:border-amber-500
+           hover:border-surface-600;
+  }
+
+  .input-sm {
+    @apply w-full bg-surface-950 border border-surface-700 rounded px-3 py-2
+           text-xs text-zinc-100 placeholder-zinc-600
+           transition-colors duration-150
+           focus:outline-none focus:ring-1 focus:ring-amber-500 focus:border-amber-500
+           hover:border-surface-600;
+  }
+
+  .select {
+    @apply input appearance-none cursor-pointer;
+  }
+
+  .textarea {
+    @apply input resize-y min-h-[80px];
+  }
+
+  /* ─── Buttons ────────────────────────────────────────────────────────────── */
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-semibold
+           transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-surface-950
+           disabled:opacity-40 disabled:cursor-not-allowed select-none cursor-pointer
+           active:scale-[0.98];
+  }
+
+  /* Amber primary — solid, high contrast */
+  .btn-primary {
+    @apply bg-amber-500 hover:bg-amber-400 text-zinc-950
+           focus:ring-amber-500;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent hover:bg-surface-800 text-zinc-400 hover:text-zinc-100
+           border border-surface-700 hover:border-surface-600;
+  }
+
+  .btn-danger {
+    @apply bg-rose-600 hover:bg-rose-500 text-white
+           focus:ring-rose-500;
+  }
+
+  .btn-success {
+    @apply bg-emerald-600 hover:bg-emerald-500 text-white
+           focus:ring-emerald-500;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs rounded;
+  }
+
+  /* ─── Badges ─────────────────────────────────────────────────────────────── */
+
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold border;
+  }
+
+  .badge-buy {
+    @apply bg-emerald-500/10 text-emerald-400 border-emerald-500/25;
+  }
+
+  .badge-sell {
+    @apply bg-rose-500/10 text-rose-400 border-rose-500/25;
+  }
+
+  .badge-hold {
+    @apply bg-zinc-800 text-zinc-400 border-zinc-700;
+  }
+
+  /* amber for AI/info — replaces old sky-blue */
+  .badge-ai {
+    @apply bg-amber-500/10 text-amber-400 border-amber-500/25;
+  }
+
+  /* ─── Tables ─────────────────────────────────────────────────────────────── */
+
+  .table-wrapper {
+    @apply overflow-x-auto rounded-lg border border-surface-800;
+  }
+
+  .table {
+    @apply w-full text-sm;
+  }
+
+  .table thead {
+    @apply bg-surface-950 border-b border-surface-800;
+  }
+
+  .table th {
+    @apply px-4 py-2.5 text-left text-[11px] font-semibold text-zinc-500 uppercase tracking-wider whitespace-nowrap;
+  }
+
+  .table td {
+    @apply px-4 py-3 text-zinc-300 whitespace-nowrap border-b border-surface-800;
+  }
+
+  .table tbody tr:last-child td {
+    @apply border-b-0;
+  }
+
+  .table tbody tr {
+    @apply hover:bg-surface-800 transition-colors duration-100;
+  }
+
+  /* ─── Form labels ────────────────────────────────────────────────────────── */
+
+  .label {
+    @apply block text-xs font-medium text-zinc-400 mb-1.5;
+  }
+
+  /* ─── Stat cards ─────────────────────────────────────────────────────────── */
+
+  .stat-value {
+    @apply text-2xl font-bold font-mono tabular-nums;
+  }
+
+  .stat-label {
+    @apply text-[10px] text-zinc-500 uppercase tracking-widest font-semibold;
+  }
+
+  /* ─── Live indicator dot ──────────────────────────────────────────────────── */
+
+  .live-dot {
+    @apply w-2 h-2 rounded-full;
+  }
+
+  /* ─── Toggle ─────────────────────────────────────────────────────────────── */
+
+  .toggle-track {
+    @apply relative inline-flex items-center w-10 h-5 rounded-full cursor-pointer
+           transition-colors duration-200 focus:outline-none focus:ring-2
+           focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-surface-900;
+  }
+
+  .toggle-thumb {
+    @apply absolute left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200;
+  }
+}
+
+/* ─── ApexCharts dark overrides ──────────────────────────────────────────── */
+.apexcharts-tooltip {
+  background: #18181b !important;
+  border: 1px solid #3f3f46 !important;
+  color: #e4e4e7 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+}
+.apexcharts-tooltip-title {
+  background: #09090b !important;
+  border-bottom: 1px solid #3f3f46 !important;
+}
+.apexcharts-xaxistooltip,
+.apexcharts-yaxistooltip {
+  background: #18181b !important;
+  border: 1px solid #3f3f46 !important;
+  color: #e4e4e7 !important;
+}
+.apexcharts-menu {
+  background: #18181b !important;
+  border: 1px solid #3f3f46 !important;
+  color: #e4e4e7 !important;
+}
+.apexcharts-menu-item:hover {
+  background: #27272a !important;
+}
+
+/* ─── Keyframe Animations ─────────────────────────────────────────────────── */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ─── Animation Utilities ────────────────────────────────────────────────── */
+.animate-fade-in   { animation: fade-in  0.2s ease both; }
+.animate-scale-in  { animation: scale-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* ─── Page Transitions ───────────────────────────────────────────────────── */
+.page-enter-active {
+  transition: opacity 0.18s ease;
+}
+.page-leave-active {
+  transition: opacity 0.08s ease;
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  pointer-events: none;
+}
+.page-enter-from { opacity: 0; }
+.page-leave-to   { opacity: 0; }
+
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  :root {
     --scrollbar-track: #0d1117;
     --scrollbar-thumb: #30363d;
     --scrollbar-thumb-hover: #484f58;
