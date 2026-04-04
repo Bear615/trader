@@ -5,6 +5,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { usePriceStore } from '@/stores/price'
 import SettingsField from '@/components/SettingsField.vue'
+import { usePinPad, NUMPAD_KEYS } from '@/composables/usePinPad'
 import api from '@/api/client'
 import axios from 'axios'
 
@@ -22,9 +23,24 @@ const redirectedFrom = computed(() => {
 const portfolioStore = usePortfolioStore()
 const priceStore = usePriceStore()
 
-const keyInput = ref('')
 const loginError = ref('')
 const loginLocked = ref(false)
+const PIN_LENGTH = 6
+
+const {
+  pin: keyInput,
+  shaking: loginShaking,
+  pressKey: basePressKey,
+  reset: resetPin,
+  triggerShake,
+} = usePinPad(PIN_LENGTH, loginWithPin)
+
+function loginPressKey(key: string | number) {
+  if (loginLocked.value) return
+  loginError.value = ''
+  basePressKey(key)
+}
+
 const saveStatus = ref<Record<string, 'idle' | 'saving' | 'saved' | 'error'>>({})
 const dangerLoading = ref<Record<string, boolean>>({})
 const successMsg = ref('')
@@ -44,11 +60,11 @@ onMounted(async () => {
   }
 })
 
-async function login() {
+async function loginWithPin(pinValue: string) {
   loginError.value = ''
   loginLocked.value = false
   try {
-    const res = await api.post<{ token: string }>('/auth/login', { pin: keyInput.value })
+    const res = await api.post<{ token: string }>('/auth/login', { pin: pinValue })
     settingsStore.setAdminKey(res.data.token)
     await settingsStore.fetchSettings()
     const redirect = route.query.redirect as string | undefined
@@ -58,6 +74,8 @@ async function login() {
       router.push({ name: 'dashboard' })
     }
   } catch (e: unknown) {
+    resetPin()
+    triggerShake()
     settingsStore.clearAdminKey()
     if (axios.isAxiosError(e) && e.response?.status === 429) {
       loginLocked.value = true
@@ -67,6 +85,9 @@ async function login() {
     }
   }
 }
+
+// Keep backward compat alias used by template
+function login() { loginWithPin(keyInput.value) }
 
 function logout() {
   settingsStore.clearAdminKey()
@@ -217,37 +238,73 @@ async function clearTrades() {
 <template>
   <div class="space-y-6 max-w-[900px]">
     <!-- Login gate -->
-    <div v-if="!settingsStore.isAdmin" class="max-w-sm mx-auto mt-16">
-      <div class="card space-y-4">
-        <div class="text-center">
-          <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto mb-3">
-            <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
+    <div v-if="!settingsStore.isAdmin" class="flex justify-center mt-12 animate-scale-in">
+      <div class="w-full max-w-xs">
+        <div class="glass-pin-card glass-shimmer p-8 space-y-7">
+          <!-- Header -->
+          <div class="flex flex-col items-center gap-2">
+            <div class="relative mb-1">
+              <div class="absolute inset-0 rounded-2xl blur-md" style="background: rgba(245,158,11,0.20);" />
+              <div class="relative w-14 h-14 rounded-2xl flex items-center justify-center" style="background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.30);">
+                <svg class="w-7 h-7 text-amber-400" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+            </div>
+            <h2 class="text-base font-semibold text-gray-100 tracking-tight">Access Required</h2>
+            <p class="text-xs text-gray-500">Enter your PIN to access admin</p>
           </div>
-          <h2 class="text-base font-semibold text-gray-100">Access Required</h2>
-          <p class="text-xs text-gray-500 mt-1">Enter your PIN to access the dashboard</p>
+
+          <!-- Redirect notice -->
+          <div v-if="redirectedFrom" class="flex items-start gap-2 rounded-xl px-3 py-2.5 text-xs text-amber-300" style="background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.20);">
+            <svg class="w-3.5 h-3.5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>Admin access required for <strong class="text-amber-200">{{ redirectedFrom }}</strong>.</span>
+          </div>
+
+          <!-- PIN dots -->
+          <div :class="['flex justify-center gap-3 py-1', loginShaking ? 'animate-shake' : '']">
+            <div
+              v-for="i in PIN_LENGTH"
+              :key="i"
+              class="w-3.5 h-3.5 rounded-full transition-all duration-200"
+              :style="i <= keyInput.length
+                ? 'background: #f59e0b; box-shadow: 0 0 10px rgba(245,158,11,0.7), 0 0 20px rgba(245,158,11,0.3); transform: scale(1.15);'
+                : 'background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);'"
+            />
+          </div>
+
+          <!-- Status messages -->
+          <div class="h-4 -mt-3 text-center">
+            <p v-if="loginError" :class="loginLocked ? 'text-xs text-amber-400' : 'text-xs text-rose-400'">{{ loginError }}</p>
+            <p v-else-if="loginLocked" class="text-xs text-amber-500">Locked. Please wait…</p>
+          </div>
+
+          <!-- Numpad -->
+          <div class="grid grid-cols-3 gap-2.5">
+            <button
+              v-for="key in NUMPAD_KEYS"
+              :key="String(key)"
+              @click="key !== '' ? loginPressKey(key) : undefined"
+              :disabled="loginLocked || key === ''"
+              :class="[
+                'h-14 rounded-2xl text-sm font-semibold transition-all duration-150 select-none',
+                key === ''
+                  ? 'invisible'
+                  : key === '⌫'
+                    ? 'text-gray-400 hover:text-gray-200 active:scale-95'
+                    : 'text-gray-100 active:scale-95',
+                loginLocked ? 'opacity-40 cursor-not-allowed' : key !== '' ? 'cursor-pointer' : ''
+              ]"
+              :style="key === '' ? '' : key === '⌫'
+                ? 'background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);'
+                : 'background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.09); box-shadow: 0 1px 0 rgba(255,255,255,0.05) inset;'"
+            >
+              {{ key }}
+            </button>
+          </div>
         </div>
-        <div v-if="redirectedFrom" class="flex items-start gap-2 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-xs text-amber-300">
-          <svg class="w-3.5 h-3.5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>Admin access is required to view <strong class="text-amber-200">{{ redirectedFrom }}</strong>.</span>
-        </div>
-        <div>
-          <label class="label">PIN</label>
-          <input
-            v-model="keyInput"
-            type="password"
-            inputmode="numeric"
-            class="input tracking-widest text-center text-lg"
-            placeholder="••••••"
-            :disabled="loginLocked"
-            @keyup.enter="login"
-          />
-        </div>
-        <p v-if="loginError" :class="loginLocked ? 'text-xs text-amber-400' : 'text-xs text-rose-400'">{{ loginError }}</p>
-        <button @click="login" :disabled="loginLocked" class="btn btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed">Unlock</button>
       </div>
     </div>
 

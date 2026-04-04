@@ -89,15 +89,24 @@ const statusColor = computed(() => {
 </script>
 
 <template>
-  <div class="flex items-start justify-between gap-4 py-3 border-b border-surface-700 last:border-0">
-    <!-- Left: label + description -->
-    <div class="flex-1 min-w-0">
+  <!-- Textarea fields get a full-width stacked layout; all others use the side-by-side row -->
+  <div
+    :class="[
+      'py-4 border-b last:border-0',
+      'border-white/[0.06]',
+      type === 'textarea'
+        ? 'flex flex-col gap-3'
+        : 'flex items-start justify-between gap-6'
+    ]"
+  >
+    <!-- Label + description -->
+    <div :class="type === 'textarea' ? '' : 'flex-1 min-w-0'">
       <div class="text-sm font-medium text-gray-200">{{ label }}</div>
       <div v-if="meta?.description" class="text-xs text-gray-500 mt-0.5 leading-relaxed">{{ meta.description }}</div>
     </div>
 
-    <!-- Right: control -->
-    <div class="flex-shrink-0 flex items-center gap-2">
+    <!-- Control -->
+    <div :class="type === 'textarea' ? 'w-full' : 'flex-shrink-0 flex items-center gap-2'">
       <!-- Toggle -->
       <template v-if="type === 'toggle'">
         <button
@@ -118,33 +127,42 @@ const statusColor = computed(() => {
         </span>
       </template>
 
-      <!-- Textarea -->
+      <!-- Textarea — full-width, stacked -->
       <template v-else-if="type === 'textarea'">
-        <div class="flex flex-col gap-2 w-80">
+        <div class="flex flex-col gap-2 w-full">
           <textarea
             v-model="local as string"
-            class="textarea text-xs font-mono leading-relaxed min-h-[100px]"
+            class="textarea text-xs font-mono leading-relaxed min-h-[160px] w-full"
           />
-          <button
-            @click="handleSave"
-            :disabled="!isModified || status === 'saving'"
-            :class="['btn btn-primary btn-sm self-end', !isModified ? 'opacity-40' : '']"
-          >
-            <div v-if="status === 'saving'" class="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
-            Save
-          </button>
+          <div class="flex items-center justify-end gap-2">
+            <span v-if="status === 'saved'" class="text-xs text-emerald-400 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              Saved
+            </span>
+            <span v-if="status === 'error'" class="text-xs text-rose-400">Failed to save</span>
+            <button
+              @click="handleSave"
+              :disabled="!isModified || status === 'saving'"
+              :class="['btn btn-primary btn-sm', !isModified ? 'opacity-40' : '']"
+            >
+              <div v-if="status === 'saving'" class="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
+              Save
+            </button>
+          </div>
         </div>
       </template>
 
       <!-- Select (provider preset) -->
       <template v-else-if="type === 'select-provider'">
         <div class="flex flex-col gap-1.5 items-end">
-          <select v-model="local" class="select w-36" @change="handleSave">
+          <select v-model="local" class="select w-40" @change="handleSave">
             <option v-for="(url, name) in PROVIDER_PRESETS" :key="name" :value="name">
               {{ name }}
             </option>
           </select>
-          <span class="text-[10px] text-gray-600 font-mono truncate max-w-[200px]" :title="providerBaseUrlPreview">
+          <span class="text-[10px] text-gray-600 font-mono truncate max-w-[220px]" :title="providerBaseUrlPreview">
             {{ providerBaseUrlPreview }}
           </span>
         </div>
@@ -164,7 +182,7 @@ const statusColor = computed(() => {
             v-model="local"
             :type="type === 'password' ? 'password' : (type === 'number' ? 'number' : 'text')"
             :step="type === 'number' ? 'any' : undefined"
-            class="input w-32 text-right font-mono text-sm"
+            class="input w-36 text-right font-mono text-sm"
             @keyup.enter="handleSave"
           />
           <button
