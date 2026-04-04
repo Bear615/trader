@@ -22,7 +22,7 @@ const currentModel = computed(() => {
 </script>
 
 <template>
-  <aside class="w-56 flex-shrink-0 bg-surface-950 border-r border-surface-800 flex flex-col relative z-20">
+  <aside class="w-56 flex-shrink-0 bg-surface-950 border-r border-surface-800 hidden md:flex flex-col relative z-20">
     <!-- Logo / wordmark -->
     <div class="h-14 flex items-center px-5 border-b border-surface-800 flex-shrink-0">
       <div class="flex items-center gap-2.5">
