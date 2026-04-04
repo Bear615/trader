@@ -1,48 +1,39 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import axios from 'axios'
+import { usePinPad, NUMPAD_KEYS } from '@/composables/usePinPad'
 
 const SESSION_KEY = 'site_unlocked'
 const emit = defineEmits<{ unlocked: [] }>()
 
-const PIN_LENGTH = 6
-
-const pin = ref('')
 const error = ref('')
 const loading = ref(false)
 const locked = ref(false)
-const shaking = ref(false)
 let lockTimer: ReturnType<typeof setTimeout> | null = null
+
+const PIN_LENGTH = 6
+
+const { pin, shaking, pressKey: basePressKey, reset, triggerShake } = usePinPad(PIN_LENGTH, submit)
 
 function pressKey(key: string | number) {
   if (locked.value || loading.value) return
-  if (key === '⌫') {
-    pin.value = pin.value.slice(0, -1)
-    error.value = ''
-    return
-  }
-  if (pin.value.length >= PIN_LENGTH) return
-  pin.value += String(key)
   error.value = ''
-  if (pin.value.length === PIN_LENGTH) {
-    submit()
-  }
+  basePressKey(key)
 }
 
-async function submit() {
-  if (locked.value || loading.value || !pin.value) return
+async function submit(pinValue: string) {
+  if (locked.value || loading.value) return
   loading.value = true
   error.value = ''
 
   try {
-    const res = await axios.post<{ token: string }>('/api/v1/auth/login', { pin: pin.value })
+    const res = await axios.post<{ token: string }>('/api/v1/auth/login', { pin: pinValue })
     sessionStorage.setItem('adminKey', res.data.token)
     sessionStorage.setItem(SESSION_KEY, '1')
     emit('unlocked')
   } catch (e: unknown) {
-    pin.value = ''
-    shaking.value = true
-    setTimeout(() => { shaking.value = false }, 600)
+    reset()
+    triggerShake()
     if (axios.isAxiosError(e) && e.response?.status === 429) {
       locked.value = true
       error.value = e.response.data?.detail ?? 'Too many attempts. Please wait and try again.'
@@ -64,20 +55,14 @@ async function submit() {
   <div class="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden" style="background: #09090b;">
     <!-- Background layers -->
     <div class="absolute inset-0 pointer-events-none" aria-hidden="true">
-      <!-- Dot grid -->
       <div class="absolute inset-0" style="background-image: radial-gradient(circle, #27272a 1px, transparent 1px); background-size: 28px 28px; opacity: 0.45;" />
-      <!-- Amber ambient glow -->
       <div class="absolute" style="top: 30%; left: 50%; transform: translate(-50%, -50%); width: 480px; height: 480px; border-radius: 50%; background: radial-gradient(circle, rgba(245,158,11,0.10) 0%, transparent 70%); filter: blur(48px);" />
-      <!-- Blue ambient glow -->
       <div class="absolute" style="bottom: 10%; right: 10%; width: 320px; height: 320px; border-radius: 50%; background: radial-gradient(circle, rgba(56,189,248,0.06) 0%, transparent 70%); filter: blur(64px);" />
     </div>
 
     <!-- Card -->
     <div class="relative z-10 w-full max-w-xs mx-4 animate-scale-in">
-      <div
-        class="glass-shimmer rounded-3xl p-8 space-y-7"
-        style="background: rgba(18,18,22,0.72); backdrop-filter: blur(32px) saturate(180%); -webkit-backdrop-filter: blur(32px) saturate(180%); border: 1px solid rgba(255,255,255,0.10); box-shadow: 0 0 0 0.5px rgba(255,255,255,0.05) inset, 0 1px 0 rgba(255,255,255,0.08) inset, 0 24px 64px rgba(0,0,0,0.6), 0 0 40px rgba(245,158,11,0.05);"
-      >
+      <div class="glass-pin-card glass-shimmer p-8 space-y-7">
         <!-- Logo -->
         <div class="flex flex-col items-center gap-2">
           <div class="relative mb-1">
@@ -94,9 +79,7 @@ async function submit() {
         </div>
 
         <!-- PIN dots -->
-        <div
-          :class="['flex justify-center gap-3 py-1', shaking ? 'animate-[shake_0.5s_cubic-bezier(0.36,0.07,0.19,0.97)_both]' : '']"
-        >
+        <div :class="['flex justify-center gap-3 py-1', shaking ? 'animate-shake' : '']">
           <div
             v-for="i in PIN_LENGTH"
             :key="i"
@@ -119,8 +102,8 @@ async function submit() {
         <!-- Numpad -->
         <div class="grid grid-cols-3 gap-2.5">
           <button
-            v-for="key in [1,2,3,4,5,6,7,8,9,'',0,'⌫']"
-            :key="key"
+            v-for="key in NUMPAD_KEYS"
+            :key="String(key)"
             @click="key !== '' ? pressKey(key) : undefined"
             :disabled="locked || loading || key === ''"
             :class="[
@@ -130,7 +113,7 @@ async function submit() {
                 : key === '⌫'
                   ? 'text-gray-400 hover:text-gray-200 active:scale-95'
                   : 'text-gray-100 active:scale-95',
-              (locked || loading) ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
+              (locked || loading) ? 'opacity-40 cursor-not-allowed' : ''
             ]"
             :style="key === '' ? '' : key === '⌫'
               ? 'background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);'
@@ -143,12 +126,3 @@ async function submit() {
     </div>
   </div>
 </template>
-
-<style scoped>
-@keyframes shake {
-  10%, 90%  { transform: translateX(-2px); }
-  20%, 80%  { transform: translateX(4px); }
-  30%, 50%, 70% { transform: translateX(-6px); }
-  40%, 60% { transform: translateX(6px); }
-}
-</style>

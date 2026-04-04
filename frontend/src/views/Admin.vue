@@ -5,6 +5,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { usePriceStore } from '@/stores/price'
 import SettingsField from '@/components/SettingsField.vue'
+import { usePinPad, NUMPAD_KEYS } from '@/composables/usePinPad'
 import api from '@/api/client'
 import axios from 'axios'
 
@@ -22,26 +23,24 @@ const redirectedFrom = computed(() => {
 const portfolioStore = usePortfolioStore()
 const priceStore = usePriceStore()
 
-const keyInput = ref('')
 const loginError = ref('')
 const loginLocked = ref(false)
-const loginShaking = ref(false)
 const PIN_LENGTH = 6
+
+const {
+  pin: keyInput,
+  shaking: loginShaking,
+  pressKey: basePressKey,
+  reset: resetPin,
+  triggerShake,
+} = usePinPad(PIN_LENGTH, loginWithPin)
 
 function loginPressKey(key: string | number) {
   if (loginLocked.value) return
-  if (key === '⌫') {
-    keyInput.value = keyInput.value.slice(0, -1)
-    loginError.value = ''
-    return
-  }
-  if (keyInput.value.length >= PIN_LENGTH) return
-  keyInput.value += String(key)
   loginError.value = ''
-  if (keyInput.value.length === PIN_LENGTH) {
-    login()
-  }
+  basePressKey(key)
 }
+
 const saveStatus = ref<Record<string, 'idle' | 'saving' | 'saved' | 'error'>>({})
 const dangerLoading = ref<Record<string, boolean>>({})
 const successMsg = ref('')
@@ -61,11 +60,11 @@ onMounted(async () => {
   }
 })
 
-async function login() {
+async function loginWithPin(pinValue: string) {
   loginError.value = ''
   loginLocked.value = false
   try {
-    const res = await api.post<{ token: string }>('/auth/login', { pin: keyInput.value })
+    const res = await api.post<{ token: string }>('/auth/login', { pin: pinValue })
     settingsStore.setAdminKey(res.data.token)
     await settingsStore.fetchSettings()
     const redirect = route.query.redirect as string | undefined
@@ -75,9 +74,8 @@ async function login() {
       router.push({ name: 'dashboard' })
     }
   } catch (e: unknown) {
-    keyInput.value = ''
-    loginShaking.value = true
-    setTimeout(() => { loginShaking.value = false }, 600)
+    resetPin()
+    triggerShake()
     settingsStore.clearAdminKey()
     if (axios.isAxiosError(e) && e.response?.status === 429) {
       loginLocked.value = true
@@ -87,6 +85,9 @@ async function login() {
     }
   }
 }
+
+// Keep backward compat alias used by template
+function login() { loginWithPin(keyInput.value) }
 
 function logout() {
   settingsStore.clearAdminKey()
@@ -239,10 +240,7 @@ async function clearTrades() {
     <!-- Login gate -->
     <div v-if="!settingsStore.isAdmin" class="flex justify-center mt-12 animate-scale-in">
       <div class="w-full max-w-xs">
-        <div
-          class="glass-shimmer rounded-3xl p-8 space-y-7"
-          style="background: rgba(18,18,22,0.72); backdrop-filter: blur(32px) saturate(180%); -webkit-backdrop-filter: blur(32px) saturate(180%); border: 1px solid rgba(255,255,255,0.10); box-shadow: 0 0 0 0.5px rgba(255,255,255,0.05) inset, 0 1px 0 rgba(255,255,255,0.08) inset, 0 24px 64px rgba(0,0,0,0.5), 0 0 32px rgba(245,158,11,0.04);"
-        >
+        <div class="glass-pin-card glass-shimmer p-8 space-y-7">
           <!-- Header -->
           <div class="flex flex-col items-center gap-2">
             <div class="relative mb-1">
@@ -266,9 +264,7 @@ async function clearTrades() {
           </div>
 
           <!-- PIN dots -->
-          <div
-            :class="['flex justify-center gap-3 py-1', loginShaking ? 'animate-[shake_0.5s_cubic-bezier(0.36,0.07,0.19,0.97)_both]' : '']"
-          >
+          <div :class="['flex justify-center gap-3 py-1', loginShaking ? 'animate-shake' : '']">
             <div
               v-for="i in PIN_LENGTH"
               :key="i"
@@ -288,8 +284,8 @@ async function clearTrades() {
           <!-- Numpad -->
           <div class="grid grid-cols-3 gap-2.5">
             <button
-              v-for="key in [1,2,3,4,5,6,7,8,9,'',0,'⌫']"
-              :key="key"
+              v-for="key in NUMPAD_KEYS"
+              :key="String(key)"
               @click="key !== '' ? loginPressKey(key) : undefined"
               :disabled="loginLocked || key === ''"
               :class="[
@@ -611,12 +607,3 @@ async function clearTrades() {
     </div>
   </Teleport>
 </template>
-
-<style scoped>
-@keyframes shake {
-  10%, 90%  { transform: translateX(-2px); }
-  20%, 80%  { transform: translateX(4px); }
-  30%, 50%, 70% { transform: translateX(-6px); }
-  40%, 60% { transform: translateX(6px); }
-}
-</style>
