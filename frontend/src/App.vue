@@ -6,6 +6,7 @@ import { useSettingsStore } from '@/stores/settings'
 import SidebarNav from '@/components/SidebarNav.vue'
 import TopBar from '@/components/TopBar.vue'
 import SiteLock from '@/components/SiteLock.vue'
+import FloatingIslandNav from '@/components/FloatingIslandNav.vue'
 
 const SESSION_KEY = 'site_unlocked'
 const siteUnlocked = ref(!!sessionStorage.getItem(SESSION_KEY))
@@ -39,16 +40,16 @@ onUnmounted(() => {
       style="background-image: radial-gradient(circle, #27272a 1px, transparent 1px); background-size: 28px 28px; opacity: 0.5;"
     />
 
-    <!-- Sidebar -->
-    <SidebarNav />
+    <!-- Sidebar (desktop only) -->
+    <SidebarNav class="hidden md:flex" />
 
     <!-- Main content area -->
     <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10">
       <!-- Topbar -->
       <TopBar />
 
-      <!-- Page content -->
-      <main class="flex-1 overflow-y-auto p-6 relative">
+      <!-- Page content — extra bottom padding on mobile for floating island -->
+      <main class="flex-1 overflow-y-auto p-4 md:p-6 pb-28 md:pb-6 relative">
         <RouterView v-slot="{ Component }">
           <Transition name="page">
             <component :is="Component" />
@@ -56,5 +57,8 @@ onUnmounted(() => {
         </RouterView>
       </main>
     </div>
+
+    <!-- Floating Island nav (mobile only) -->
+    <FloatingIslandNav />
   </div>
 </template>
