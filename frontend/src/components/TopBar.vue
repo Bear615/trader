@@ -32,7 +32,7 @@ const formattedChange = computed(() =>
 const formattedPortfolio = computed(() => {
   const p = portfolioStore.portfolio
   if (!p) return ''
-  return quoteSymbol.value + (p.total_value_usd ?? p.usd_balance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return quoteSymbol.value + (p.xrp_value_quote ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 })
 const formattedRoi = computed(() => {
   const p = portfolioStore.portfolio
@@ -88,7 +88,7 @@ const formattedRoi = computed(() => {
 
     <!-- Right: portfolio -->
     <div v-if="portfolioStore.portfolio" class="flex items-center gap-2 md:gap-3 flex-shrink-0">
-      <span class="hidden sm:inline text-xs text-zinc-500">Portfolio</span>
+      <span class="hidden sm:inline text-xs text-zinc-500">XRP Value</span>
       <span class="text-xs md:text-sm font-semibold font-mono text-zinc-100 tabular-nums">
         <NumberTicker :value="formattedPortfolio" />
       </span>

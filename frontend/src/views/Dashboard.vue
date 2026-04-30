@@ -41,7 +41,7 @@ const quoteCurrency = computed(() => currencyCode(m.value?.quote_currency, p.val
 const quoteSymbol = computed(() => currencySymbol(quoteCurrency.value))
 
 const portfolioValue = computed(() => {
-  const v = p.value?.total_value_usd ?? p.value?.usd_balance ?? 0
+  const v = p.value?.xrp_value_quote ?? 0
   return v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 })
 
@@ -52,17 +52,6 @@ const roiLabel = computed(() =>
 )
 const winRateGood = computed(() => (m.value?.win_rate_pct ?? 0) >= 50)
 
-const resettingROI = ref(false)
-async function handleResetROI() {
-  if (!confirm('Reset ROI baseline to current portfolio value?')) return
-  resettingROI.value = true
-  try {
-    await portfolioStore.resetROI()
-    await portfolioStore.fetchMetrics()
-  } finally {
-    resettingROI.value = false
-  }
-}
 </script>
 
 <template>
@@ -79,7 +68,7 @@ async function handleResetROI() {
 
       <!-- Portfolio value hero -->
       <div class="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5 flex flex-col gap-4">
-        <div class="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Portfolio Value</div>
+        <div class="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">XRP Value</div>
         <div>
           <div class="text-3xl font-bold font-mono tabular-nums text-gray-100 leading-none">{{ quoteSymbol }}{{ portfolioValue }}</div>
           <div class="mt-2">
@@ -91,12 +80,7 @@ async function handleResetROI() {
                   : 'text-rose-400 bg-rose-500/10 border-rose-500/20'
               ]"
             >{{ roiLabel }}</span>
-            <span class="text-xs text-gray-600 ml-2">all-time return</span>
-            <button
-              @click="handleResetROI"
-              :disabled="resettingROI"
-              class="ml-3 text-[10px] text-gray-500 hover:text-gray-300 border border-white/10 hover:border-white/20 rounded px-1.5 py-0.5 transition-colors disabled:opacity-40"
-            >Reset ROI</button>
+            <span class="text-xs text-gray-600 ml-2">XRP position return</span>
           </div>
         </div>
         <div class="pt-3 border-t border-white/[0.06] grid grid-cols-2 gap-4">

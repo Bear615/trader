@@ -20,7 +20,7 @@ from app.services.settings_service import (
     get_setting_meta,
     get_setting,
 )
-from app.services.trading_service import reset_portfolio, reset_roi, get_portfolio, execute_trade
+from app.services.trading_service import reset_portfolio, reset_roi, get_portfolio, execute_trade, _avg_buy_price
 from app.services.price_service import get_latest_price, seed_from_coingecko, prune_old_prices
 from app.services.backtest_service import run_backtest
 from app.models.price import PricePoint
@@ -107,13 +107,13 @@ async def update_settings(body: SettingsUpdate, db: Session = Depends(get_db)):
 @router.post("/portfolio/reset")
 def reset(db: Session = Depends(get_db)):
     portfolio = reset_portfolio(db)
-    return portfolio.to_dict(quote_currency=str(get_setting(db, "quote_currency")).upper())
+    return portfolio.to_dict(quote_currency=str(get_setting(db, "quote_currency")).upper(), avg_buy_price=_avg_buy_price(db))
 
 
 @router.post("/portfolio/reset-roi")
 def reset_roi_endpoint(db: Session = Depends(get_db)):
     portfolio = reset_roi(db)
-    return portfolio.to_dict(quote_currency=str(get_setting(db, "quote_currency")).upper())
+    return portfolio.to_dict(quote_currency=str(get_setting(db, "quote_currency")).upper(), avg_buy_price=_avg_buy_price(db))
 
 
 # ---------------------------------------------------------------------------

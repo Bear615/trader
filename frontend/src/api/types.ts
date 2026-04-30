@@ -12,6 +12,7 @@ export interface Portfolio {
   xrp_balance: number
   starting_budget: number
   total_value_usd: number | null
+  xrp_value_quote?: number | null
   quote_currency?: string
   roi_pct: number | null
   created_at: string
@@ -53,6 +54,7 @@ export interface AIDecision {
 
 export interface Metrics {
   total_value_usd: number
+  xrp_value_quote?: number
   quote_currency?: string
   roi_pct: number
   total_trades: number

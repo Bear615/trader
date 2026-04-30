@@ -2,12 +2,15 @@
 import { onMounted, computed, ref } from 'vue'
 import { useAIStore } from '@/stores/ai'
 import AIDecisionCard from '@/components/AIDecisionCard.vue'
+import axios from 'axios'
 
 const store = useAIStore()
 
 const totalPages    = computed(() => Math.ceil(store.total / store.perPage))
 const filterAction  = ref<'ALL' | 'BUY' | 'SELL' | 'HOLD'>('ALL')
 const filterExecuted = ref(false)
+const triggering = ref(false)
+const triggerError = ref('')
 
 const buys  = computed(() => store.items.filter(d => d.action === 'BUY').length)
 const sells = computed(() => store.items.filter(d => d.action === 'SELL').length)
@@ -32,7 +35,19 @@ onMounted(() => {
 })
 
 async function trigger() {
-  await store.triggerDecision()
+  if (triggering.value) return
+  triggering.value = true
+  triggerError.value = ''
+  try {
+    await store.triggerDecision()
+    await store.fetchDecisions(1)
+  } catch (e: unknown) {
+    triggerError.value = axios.isAxiosError(e)
+      ? (e.response?.data?.detail ?? e.message)
+      : String(e)
+  } finally {
+    triggering.value = false
+  }
 }
 </script>
 
@@ -47,12 +62,17 @@ async function trigger() {
           {{ store.total.toLocaleString() }} total decisions logged
         </p>
       </div>
-      <button @click="trigger" class="btn btn-primary btn-sm shrink-0">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+      <button @click="trigger" :disabled="triggering" class="btn btn-primary btn-sm shrink-0">
+        <div v-if="triggering" class="w-3.5 h-3.5 border border-white border-t-transparent rounded-full animate-spin" />
+        <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
         </svg>
-        Trigger Now
+        {{ triggering ? 'Thinking...' : 'Trigger Now' }}
       </button>
+    </div>
+
+    <div v-if="triggerError" class="rounded-lg border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
+      {{ triggerError }}
     </div>
 
     <!-- ── Stats row ── -->

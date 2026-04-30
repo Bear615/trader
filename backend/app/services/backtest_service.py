@@ -384,7 +384,7 @@ def _compute_live_metrics(db: Session, current_price: float) -> dict[str, Any]:
     portfolio = get_portfolio(db)
     quote_currency = str(get_setting(db, "quote_currency")).upper()
     total_value = portfolio.total_value_usd(current_price)
-    roi = ((total_value - portfolio.starting_budget) / portfolio.starting_budget * 100) if portfolio.starting_budget else 0
+    xrp_value = portfolio.xrp_balance * current_price
 
     all_trades = db.query(Trade).order_by(Trade.timestamp.asc()).all()
 
@@ -400,6 +400,8 @@ def _compute_live_metrics(db: Session, current_price: float) -> dict[str, Any]:
             total_xrp_bought += t.xrp_amount
             total_usd_spent += t.usd_amount
     avg_cost = (total_usd_spent / total_xrp_bought) if total_xrp_bought > 0 else 0
+    current_xrp_cost_basis = avg_cost * portfolio.xrp_balance if avg_cost and portfolio.xrp_balance else 0
+    roi = ((xrp_value - current_xrp_cost_basis) / current_xrp_cost_basis * 100) if current_xrp_cost_basis else 0
     for t in sell_trades:
         if t.price_at_trade > avg_cost:
             profitable_sells += 1
@@ -409,6 +411,7 @@ def _compute_live_metrics(db: Session, current_price: float) -> dict[str, Any]:
 
     return {
         "total_value_usd": total_value,
+        "xrp_value_quote": xrp_value,
         "quote_currency": quote_currency,
         "roi_pct": round(roi, 4),
         "total_trades": len(all_trades),

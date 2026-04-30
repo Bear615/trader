@@ -26,7 +26,9 @@ export const useAIStore = defineStore('ai', () => {
   }
 
   async function triggerDecision() {
-    const res = await api.post<AIDecision>('/admin/ai/trigger')
+    const res = await api.post<AIDecision>('/admin/ai/trigger', undefined, {
+      timeout: 180000,
+    })
     return res.data
   }
 
