@@ -54,6 +54,9 @@ const krakenSyncLoading = ref(false)
 
 const isLiveMode = computed(() => settingsStore.settings['trading_mode'] === 'live')
 const quoteCurrency = computed(() => String(settingsStore.settings['quote_currency'] || 'USD').toUpperCase())
+const livePrice = computed(() =>
+  priceStore.current ? `${quoteCurrency.value === 'GBP' ? '£' : '$'}${priceStore.current.price.toFixed(6)}` : '—'
+)
 
 onMounted(async () => {
   if (settingsStore.isAdmin) {
@@ -501,6 +504,10 @@ async function clearTrades() {
                 <div v-if="krakenSyncLoading" class="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin" />
                 Poll {{ quoteCurrency }} Balance
               </button>
+              <div class="ml-auto flex items-center gap-2 rounded-lg border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-xs font-mono">
+                <span class="text-sky-300 uppercase tracking-wider font-semibold">Live Price</span>
+                <span class="text-sky-100 tabular-nums">{{ livePrice }}</span>
+              </div>
             </div>
             <div v-if="krakenTestResult !== null" class="rounded-lg px-3 py-2 text-xs font-mono"
               :class="krakenTestResult.ok ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-300' : 'bg-rose-500/10 border border-rose-500/20 text-rose-300'">
