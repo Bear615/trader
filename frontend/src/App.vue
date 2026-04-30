@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import { usePriceStore } from '@/stores/price'
 import { useSettingsStore } from '@/stores/settings'
@@ -10,17 +10,37 @@ import FloatingIslandNav from '@/components/FloatingIslandNav.vue'
 
 const SESSION_KEY = 'site_unlocked'
 const siteUnlocked = ref(!!sessionStorage.getItem(SESSION_KEY))
+const checkingSession = ref(siteUnlocked.value)
 function onUnlocked() { siteUnlocked.value = true }
 
 const priceStore = usePriceStore()
 const settingsStore = useSettingsStore()
 
-onMounted(async () => {
+async function initializeUnlockedApp() {
   await priceStore.fetchCurrent()
   priceStore.connectWebSocket()
-  // Pre-load settings so TopBar mode badge works without visiting Admin
-  if (settingsStore.isAdmin) {
-    settingsStore.fetchSettings().catch(() => {/* ignore if key expired */})
+}
+
+onMounted(async () => {
+  if (siteUnlocked.value) {
+    const valid = settingsStore.isAdmin ? await settingsStore.verifySession() : false
+    if (!valid) {
+      siteUnlocked.value = false
+      sessionStorage.removeItem(SESSION_KEY)
+      checkingSession.value = false
+      return
+    }
+    await initializeUnlockedApp()
+  }
+  checkingSession.value = false
+})
+
+watch(siteUnlocked, async (unlocked, wasUnlocked) => {
+  if (unlocked && !wasUnlocked) {
+    await initializeUnlockedApp()
+  }
+  if (!unlocked && wasUnlocked) {
+    priceStore.disconnect()
   }
 })
 
@@ -30,7 +50,8 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <SiteLock v-if="!siteUnlocked" @unlocked="onUnlocked" />
+  <div v-if="checkingSession" class="h-screen bg-surface-950" />
+  <SiteLock v-else-if="!siteUnlocked" @unlocked="onUnlocked" />
 
   <div v-else class="flex h-screen bg-surface-950 overflow-hidden relative">
     <!-- Subtle dot-grid texture — static, zero JS cost -->

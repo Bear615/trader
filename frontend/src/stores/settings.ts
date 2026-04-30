@@ -44,6 +44,16 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
 
+  async function verifySession() {
+    try {
+      await fetchSettings()
+      return true
+    } catch {
+      clearAdminKey()
+      return false
+    }
+  }
+
   async function saveSettings(updates: Record<string, unknown>) {
     saving.value = true
     try {
@@ -74,6 +84,7 @@ export const useSettingsStore = defineStore('settings', () => {
     setAdminKey,
     clearAdminKey,
     fetchSettings,
+    verifySession,
     saveSettings,
     saveSetting,
   }
