@@ -10,7 +10,7 @@ class Trade(Base):
     timestamp = Column(DateTime, nullable=False, index=True, default=datetime.utcnow)
     action = Column(String(4), nullable=False)          # "BUY" | "SELL"
     xrp_amount = Column(Float, nullable=False)
-    usd_amount = Column(Float, nullable=False)          # gross USD value of trade
+    usd_amount = Column(Float, nullable=False)          # gross selected quote-currency value of trade
     price_at_trade = Column(Float, nullable=False)
     fee_usd = Column(Float, nullable=False, default=0.0)
     fee_type = Column(String(6), nullable=False, default="taker")  # "maker" | "taker"

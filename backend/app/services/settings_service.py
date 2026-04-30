@@ -24,11 +24,11 @@ SECRET_SETTING_KEYS = {
 DEFAULTS: dict[str, tuple[Any, str]] = {
     # --- Exchange & Data ---
     "quote_currency":                   ("USD", "Quote currency for balances and XRP prices. Options: USD or GBP"),
-    "poll_interval_seconds":            (10,    "How often to fetch a new XRP price from DIA (seconds, min 5)"),
+    "poll_interval_seconds":            (10,    "How often to fetch a new XRP price (seconds, min 5)"),
     "price_history_retention_days":     (30,    "How many days of price history to keep in the database"),
 
     # --- Portfolio & Fees ---
-    "starting_budget_usd":              (10000.0, "Initial USD balance when the portfolio is reset"),
+    "starting_budget_usd":              (10000.0, "Initial quote-currency balance when the portfolio is reset"),
     "maker_fee_pct":                    (0.1,   "Maker fee percentage (e.g. 0.1 = 0.1%)"),
     "taker_fee_pct":                    (0.1,   "Taker fee percentage (e.g. 0.1 = 0.1%)"),
 
@@ -63,7 +63,7 @@ DEFAULTS: dict[str, tuple[Any, str]] = {
     "risk_take_profit_pct":             (10.0,  "Auto-sell if XRP rises this % above average buy price"),
     "risk_max_daily_trades":            (20,    "Maximum number of AI trades allowed per 24-hour period"),
     "risk_max_drawdown_pct":            (20.0,  "Pause AI if portfolio drawdown from peak exceeds this %"),
-    "risk_min_trade_usd":               (10.0,  "Minimum trade value in USD — smaller trades are rejected"),
+    "risk_min_trade_usd":               (10.0,  "Minimum trade value in the selected quote currency - smaller trades are rejected"),
     "risk_max_position_pct":            (80.0,  "Maximum % of portfolio that can be held in XRP at once"),
 
     # --- Display ---
@@ -76,7 +76,7 @@ DEFAULTS: dict[str, tuple[Any, str]] = {
     "trading_mode":                         ("paper", "Trading mode: 'paper' for simulated trading, 'live' for real Kraken orders"),
     "kraken_api_key":                       ("",    "Kraken API key (required for live trading mode)"),
     "kraken_api_secret":                    ("",    "Kraken API secret (required for live trading mode)"),
-    "kraken_pair":                          ("XXRPZUSD", "Kraken trading pair symbol (e.g. XXRPZUSD or XXRPZGBP)"),
+    "kraken_pair":                          ("XXRPZUSD", "Kraken XRP trading pair; it is normalized to match the selected quote currency"),
     "kraken_order_type":                    ("market", "Order type for Kraken trades: 'market' or 'limit'"),
     "kraken_balance_sync_interval_minutes": (20,   "How often (minutes) to reconcile local portfolio balances with Kraken in live mode"),
 

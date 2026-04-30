@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import { onMounted, computed } from 'vue'
 import { useTradesStore } from '@/stores/trades'
+import { useSettingsStore } from '@/stores/settings'
+import { currencyCode, currencySymbol } from '@/utils/format'
 import api from '@/api/client'
 
 const store = useTradesStore()
+const settingsStore = useSettingsStore()
 const totalPages = computed(() => Math.ceil(store.total / store.perPage))
+const quoteCurrency = computed(() => currencyCode(settingsStore.settings['quote_currency']))
+const quoteSymbol = computed(() => currencySymbol(quoteCurrency.value))
 
 onMounted(() => store.fetchTrades(1))
 
@@ -91,11 +96,11 @@ function fmt(ts: string) {
             <th>Action</th>
             <th class="text-right">XRP Amount</th>
             <th class="text-right">Price</th>
-            <th class="text-right">USD Value</th>
+            <th class="text-right">{{ quoteCurrency }} Value</th>
             <th class="text-right">Fee</th>
             <th class="text-right">P&amp;L</th>
             <th>Trigger</th>
-            <th class="text-right">USD After</th>
+            <th class="text-right">{{ quoteCurrency }} After</th>
           </tr>
         </thead>
         <tbody>
@@ -114,18 +119,18 @@ function fmt(ts: string) {
                 <span :class="trade.action === 'BUY' ? 'badge-buy' : 'badge-sell'">{{ trade.action }}</span>
               </td>
               <td class="text-right font-mono tabular-nums">{{ trade.xrp_amount.toFixed(6) }}</td>
-              <td class="text-right font-mono tabular-nums">${{ trade.price_at_trade.toFixed(6) }}</td>
-              <td class="text-right font-mono tabular-nums">${{ trade.usd_amount.toFixed(2) }}</td>
-              <td class="text-right font-mono tabular-nums text-gray-500">${{ trade.fee_usd.toFixed(4) }}</td>
+              <td class="text-right font-mono tabular-nums">{{ quoteSymbol }}{{ trade.price_at_trade.toFixed(6) }}</td>
+              <td class="text-right font-mono tabular-nums">{{ quoteSymbol }}{{ trade.usd_amount.toFixed(2) }}</td>
+              <td class="text-right font-mono tabular-nums text-gray-500">{{ quoteSymbol }}{{ trade.fee_usd.toFixed(4) }}</td>
               <td :class="['text-right font-mono tabular-nums', pnlClass(trade.pnl)]">
-                {{ trade.pnl !== null ? (trade.pnl >= 0 ? '+$' : '-$') + Math.abs(trade.pnl).toFixed(4) : '—' }}
+                {{ trade.pnl !== null ? (trade.pnl >= 0 ? '+' : '-') + quoteSymbol + Math.abs(trade.pnl).toFixed(4) : '—' }}
               </td>
               <td>
                 <span :class="trade.triggered_by === 'ai' ? 'badge-ai' : 'badge text-gray-400 bg-gray-500/10 border-gray-500/25'">
                   {{ trade.triggered_by.toUpperCase() }}
                 </span>
               </td>
-              <td class="text-right font-mono tabular-nums text-gray-400">${{ trade.usd_balance_after?.toFixed(2) ?? '—' }}</td>
+              <td class="text-right font-mono tabular-nums text-gray-400">{{ trade.usd_balance_after != null ? quoteSymbol + trade.usd_balance_after.toFixed(2) : '—' }}</td>
             </tr>
           </template>
         </tbody>

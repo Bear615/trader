@@ -38,13 +38,8 @@ def _quote_currency(db: Session) -> str:
 
 
 def _kraken_pair_for_quote(db: Session) -> str:
-    quote = _quote_currency(db)
-    pair = str(get_setting(db, "kraken_pair")).upper().strip()
-    if quote == "GBP" and pair in {"", "XXRPZUSD", "XRPUSD"}:
-        return "XXRPZGBP"
-    if quote == "USD" and pair in {"", "XXRPZGBP", "XRPGBP"}:
-        return "XXRPZUSD"
-    return pair
+    from app.services.kraken_service import normalize_xrp_pair_for_quote
+    return normalize_xrp_pair_for_quote(get_setting(db, "kraken_pair"), _quote_currency(db))
 
 
 async def fetch_and_store_price() -> Optional[PricePoint]:

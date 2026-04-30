@@ -64,8 +64,13 @@ function handleToggle() {
 }
 
 const ACRONYMS = new Set(['ai', 'api', 'url', 'id', 'usd', 'gbp', 'xrp', 'ui'])
+const LABEL_OVERRIDES: Record<string, string> = {
+  starting_budget_usd: 'Starting Budget',
+  risk_min_trade_usd: 'Minimum Trade Value',
+}
 
 const label = computed(() => {
+  if (LABEL_OVERRIDES[props.settingKey]) return LABEL_OVERRIDES[props.settingKey]
   return props.settingKey
     .split('_')
     .map((word) => {

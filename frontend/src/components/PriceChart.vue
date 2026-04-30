@@ -81,7 +81,7 @@ const series = computed(() => [
       <div class="w-6 h-6 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
     </div>
     <div v-if="data.length === 0 && !loading" class="h-48 flex items-center justify-center">
-      <p class="text-sm text-gray-600">No price data yet. Waiting for DIA poll…</p>
+    <p class="text-sm text-gray-600">No price data yet. Waiting for the next price poll...</p>
     </div>
     <apexchart
       v-else

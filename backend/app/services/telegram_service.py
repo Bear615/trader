@@ -56,17 +56,19 @@ async def notify_trade(db: Session, trade: "Trade") -> None:
         if not token or not chat_id:
             return
 
+        quote = str(get_setting(db, "quote_currency")).upper()
+        symbol = "£" if quote == "GBP" else "$"
         action = trade.action
         emoji = "🟢" if action == "BUY" else "🔴"
         lines = [
             f"{emoji} <b>{action}</b> executed",
             f"  Amount: <code>{trade.xrp_amount:.4f} XRP</code>",
-            f"  Price: <code>${trade.price_at_trade:.6f}</code>",
-            f"  Value: <code>${trade.usd_amount:.2f}</code>",
-            f"  Fee: <code>${trade.fee_usd:.4f}</code>",
+            f"  Price: <code>{symbol}{trade.price_at_trade:.6f}</code>",
+            f"  Value: <code>{symbol}{trade.usd_amount:.2f}</code>",
+            f"  Fee: <code>{symbol}{trade.fee_usd:.4f}</code>",
         ]
         if trade.usd_balance_after is not None and trade.xrp_balance_after is not None:
-            lines.append(f"  USD after: <code>${trade.usd_balance_after:.2f}</code>")
+            lines.append(f"  {quote} after: <code>{symbol}{trade.usd_balance_after:.2f}</code>")
             lines.append(f"  XRP after: <code>{trade.xrp_balance_after:.4f}</code>")
         await _send(token, chat_id, "\n".join(lines))
     except Exception:

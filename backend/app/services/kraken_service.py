@@ -22,6 +22,32 @@ KRAKEN_BASE = "https://api.kraken.com"
 _PUBLIC_PATH = "/0/public"
 _PRIVATE_PATH = "/0/private"
 COMMON_QUOTE_CURRENCIES = ("USD", "GBP", "EUR")
+QUOTE_PAIR_ALIASES = {
+    "USD": "XXRPZUSD",
+    "GBP": "XRPGBP",
+    "EUR": "XXRPZEUR",
+}
+
+
+def pair_quote_currency(pair: str | None) -> str | None:
+    if not pair:
+        return None
+    compact = pair.upper().replace("/", "").replace("-", "").strip()
+    for quote in COMMON_QUOTE_CURRENCIES:
+        for suffix in (quote, f"Z{quote}"):
+            if compact.endswith(suffix):
+                return quote
+    return None
+
+
+def normalize_xrp_pair_for_quote(pair: str | None, quote_currency: str) -> str:
+    """Return an XRP Kraken pair whose quote side matches the selected currency."""
+    quote = quote_currency.upper()
+    default_pair = QUOTE_PAIR_ALIASES.get(quote, QUOTE_PAIR_ALIASES["USD"])
+    compact = str(pair or "").upper().replace("/", "").replace("-", "").strip()
+    if "XRP" in compact and pair_quote_currency(pair) == quote:
+        return compact
+    return default_pair
 
 
 # ---------------------------------------------------------------------------
@@ -137,16 +163,6 @@ async def get_balances(
                 except (TypeError, ValueError):
                     logger.warning("Ignoring non-numeric Kraken balance for asset %s", asset)
         return total
-
-    def pair_quote_currency(pair: str | None) -> str | None:
-        if not pair:
-            return None
-        compact = pair.upper().replace("/", "").replace("-", "").strip()
-        for quote in COMMON_QUOTE_CURRENCIES:
-            for suffix in (quote, f"Z{quote}"):
-                if compact.endswith(suffix):
-                    return quote
-        return None
 
     quote = quote_currency.upper()
     balances_by_currency = {code: total_for(code) for code in COMMON_QUOTE_CURRENCIES}

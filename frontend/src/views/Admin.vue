@@ -6,6 +6,7 @@ import { usePortfolioStore } from '@/stores/portfolio'
 import { usePriceStore } from '@/stores/price'
 import SettingsField from '@/components/SettingsField.vue'
 import { usePinPad, NUMPAD_KEYS } from '@/composables/usePinPad'
+import { currencySymbol } from '@/utils/format'
 import api from '@/api/client'
 import axios from 'axios'
 
@@ -54,8 +55,9 @@ const krakenSyncLoading = ref(false)
 
 const isLiveMode = computed(() => settingsStore.settings['trading_mode'] === 'live')
 const quoteCurrency = computed(() => String(settingsStore.settings['quote_currency'] || 'USD').toUpperCase())
+const quoteSymbol = computed(() => currencySymbol(quoteCurrency.value))
 const livePrice = computed(() =>
-  priceStore.current ? `${quoteCurrency.value === 'GBP' ? '£' : '$'}${priceStore.current.price.toFixed(6)}` : '—'
+  priceStore.current ? `${quoteSymbol.value}${priceStore.current.price.toFixed(6)}` : '—'
 )
 
 onMounted(async () => {
@@ -152,7 +154,7 @@ async function syncKrakenBalance() {
   try {
     const res = await api.post('/admin/kraken/sync-balance')
     const syncedCurrency = res.data.quote_currency ?? quoteCurrency.value
-    const syncedSymbol = syncedCurrency === 'GBP' ? '£' : '$'
+    const syncedSymbol = currencySymbol(syncedCurrency)
     successMsg.value = `Balances synced — ${syncedCurrency}: ${syncedSymbol}${res.data.usd.toFixed(2)}, XRP: ${res.data.xrp.toFixed(6)}`
     await Promise.all([portfolioStore.fetchPortfolio(), portfolioStore.fetchMetrics()])
     setTimeout(() => { successMsg.value = '' }, 5000)
@@ -512,7 +514,7 @@ async function clearTrades() {
             <div v-if="krakenTestResult !== null" class="rounded-lg px-3 py-2 text-xs font-mono"
               :class="krakenTestResult.ok ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-300' : 'bg-rose-500/10 border border-rose-500/20 text-rose-300'">
               <template v-if="krakenTestResult.ok">
-                Connected — {{ krakenTestResult.quote_currency ?? quoteCurrency }}: {{ (krakenTestResult.quote_currency ?? quoteCurrency) === 'GBP' ? '£' : '$' }}{{ krakenTestResult.usd?.toFixed(2) }}, XRP: {{ krakenTestResult.xrp?.toFixed(6) }}
+                Connected — {{ krakenTestResult.quote_currency ?? quoteCurrency }}: {{ currencySymbol(krakenTestResult.quote_currency ?? quoteCurrency) }}{{ krakenTestResult.usd?.toFixed(2) }}, XRP: {{ krakenTestResult.xrp?.toFixed(6) }}
               </template>
               <template v-else>
                 {{ krakenTestResult.error }}

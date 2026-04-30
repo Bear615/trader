@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue'
 import { useBacktestStore } from '@/stores/backtest'
+import { useSettingsStore } from '@/stores/settings'
+import { currencyCode, currencySymbol } from '@/utils/format'
 import type { BacktestRun } from '@/api/types'
 
 const store = useBacktestStore()
+const settingsStore = useSettingsStore()
 
 const running = ref(false)
 const activeResult = ref<BacktestRun | null>(null)
@@ -23,6 +26,8 @@ const form = ref({
 // Separate strategy mode from the freeform model name so the form stays clean
 const strategyMode = ref<'random' | 'ai'>('random')
 const customModel = ref('gpt-4o')
+const quoteCurrency = computed(() => currencyCode(settingsStore.settings['quote_currency']))
+const quoteSymbol = computed(() => currencySymbol(quoteCurrency.value))
 
 onMounted(async () => {
   const now = new Date()
@@ -69,9 +74,9 @@ const equityChartOptions = computed(() => ({
     labels: { style: { colors: '#6b7280', fontSize: '11px' }, datetimeUTC: false },
     axisBorder: { show: false }, axisTicks: { show: false },
   },
-  yaxis: { labels: { style: { colors: '#6b7280', fontSize: '11px' }, formatter: (v: number) => '$' + v.toFixed(0) } },
+  yaxis: { labels: { style: { colors: '#6b7280', fontSize: '11px' }, formatter: (v: number) => quoteSymbol.value + v.toFixed(0) } },
   grid: { borderColor: '#21262d', strokeDashArray: 4 },
-  tooltip: { x: { format: 'dd MMM HH:mm' }, y: { formatter: (v: number) => '$' + v.toFixed(2) } },
+  tooltip: { x: { format: 'dd MMM HH:mm' }, y: { formatter: (v: number) => quoteSymbol.value + v.toFixed(2) } },
   dataLabels: { enabled: false },
 }))
 
@@ -114,7 +119,7 @@ function fmtDate(d: string) {
           <input v-model="form.end_date" type="datetime-local" class="input" />
         </div>
         <div>
-          <label class="label">Initial Capital (USD)</label>
+          <label class="label">Initial Capital ({{ quoteCurrency }})</label>
           <input v-model.number="form.initial_capital" type="number" min="100" class="input" />
         </div>
         <div class="grid grid-cols-2 gap-3">
@@ -212,7 +217,7 @@ function fmtDate(d: string) {
           </div>
           <div class="card-sm text-center">
             <div class="stat-label">Final Value</div>
-            <div class="text-xl font-bold font-mono text-gray-100 mt-1.5 tabular-nums">${{ activeResult.result.final_value.toFixed(2) }}</div>
+            <div class="text-xl font-bold font-mono text-gray-100 mt-1.5 tabular-nums">{{ quoteSymbol }}{{ activeResult.result.final_value.toFixed(2) }}</div>
           </div>
         </div>
 
@@ -259,7 +264,7 @@ function fmtDate(d: string) {
             <tr v-for="run in store.runs" :key="run.id">
               <td class="text-gray-500 font-mono">#{{ run.id }}</td>
               <td class="text-xs text-gray-400">{{ fmtDate(run.start_date) }} → {{ fmtDate(run.end_date) }}</td>
-              <td class="text-right font-mono tabular-nums">${{ run.initial_capital.toFixed(0) }}</td>
+              <td class="text-right font-mono tabular-nums">{{ quoteSymbol }}{{ run.initial_capital.toFixed(0) }}</td>
               <td><span class="badge-ai">{{ run.ai_model }}</span></td>
               <td
                 class="text-right font-mono tabular-nums"

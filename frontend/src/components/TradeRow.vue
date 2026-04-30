@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import type { Trade } from '@/api/types'
 import { computed } from 'vue'
-import { formatDate } from '@/utils/format'
+import { useSettingsStore } from '@/stores/settings'
+import { formatDate, currencyCode, currencySymbol } from '@/utils/format'
 
 const props = defineProps<{ trade: Trade }>()
+const settingsStore = useSettingsStore()
 
 const isBuy = computed(() => props.trade.action === 'BUY')
+const quoteCurrency = computed(() => currencyCode(settingsStore.settings['quote_currency']))
+const quoteSymbol = computed(() => currencySymbol(quoteCurrency.value))
 </script>
 
 <template>
@@ -16,11 +20,11 @@ const isBuy = computed(() => props.trade.action === 'BUY')
         <div class="text-sm font-medium text-gray-200 font-mono tabular-nums">
           {{ trade.xrp_amount.toFixed(4) }} XRP
         </div>
-        <div class="text-xs text-gray-500 font-mono">@ ${{ trade.price_at_trade.toFixed(6) }}</div>
+        <div class="text-xs text-gray-500 font-mono">@ {{ quoteSymbol }}{{ trade.price_at_trade.toFixed(6) }}</div>
       </div>
     </div>
     <div class="text-right flex-shrink-0">
-      <div class="text-sm font-mono text-gray-300 tabular-nums">${{ trade.usd_amount.toFixed(2) }}</div>
+      <div class="text-sm font-mono text-gray-300 tabular-nums">{{ quoteSymbol }}{{ trade.usd_amount.toFixed(2) }}</div>
       <div class="text-xs text-gray-600">{{ formatDate(trade.timestamp) }}</div>
     </div>
   </div>

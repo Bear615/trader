@@ -53,8 +53,8 @@ async def _kraken_balance_sync_job():
         portfolio.updated_at  = datetime.utcnow()
         db.commit()
         logger.info(
-            "Kraken balance sync: USD=%.2f XRP=%.6f",
-            balances["usd"], balances["xrp"],
+            "Kraken balance sync: %s=%.2f XRP=%.6f",
+            balances["quote_currency"], balances["usd"], balances["xrp"],
         )
     except Exception as exc:
         logger.warning("Kraken balance sync failed: %s", exc)

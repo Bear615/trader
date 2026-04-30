@@ -61,6 +61,11 @@ async def update_settings(body: SettingsUpdate, db: Session = Depends(get_db)):
         for key, value in body.updates.items()
         if not (key in SECRET_SETTING_KEYS and value == MASKED_SECRET)
     }
+    if "quote_currency" in updates or "kraken_pair" in updates:
+        from app.services.kraken_service import normalize_xrp_pair_for_quote
+        quote_currency = str(updates.get("quote_currency") or get_setting(db, "quote_currency")).upper()
+        pair = updates.get("kraken_pair") or get_setting(db, "kraken_pair")
+        updates["kraken_pair"] = normalize_xrp_pair_for_quote(pair, quote_currency)
 
     # Detect if we're switching into live mode (not already live)
     switching_to_live = (
@@ -81,7 +86,8 @@ async def update_settings(body: SettingsUpdate, db: Session = Depends(get_db)):
             try:
                 from app.services.kraken_service import get_balances
                 quote_currency = str(get_setting(db, "quote_currency")).upper()
-                balances = await get_balances(api_key, api_secret, quote_currency)
+                pair = str(get_setting(db, "kraken_pair"))
+                balances = await get_balances(api_key, api_secret, quote_currency, pair)
                 portfolio = get_portfolio(db)
                 latest = get_latest_price(db)
                 current_price = latest.price if latest else 0.0
@@ -91,8 +97,8 @@ async def update_settings(body: SettingsUpdate, db: Session = Depends(get_db)):
                 portfolio.updated_at = datetime.utcnow()
                 db.commit()
                 logger.info(
-                    "Switched to live trading — synced Kraken balances: USD=%.2f XRP=%.6f, starting_budget=%.2f",
-                    balances["usd"], balances["xrp"], portfolio.starting_budget,
+                    "Switched to live trading - synced Kraken balances: %s=%.2f XRP=%.6f, starting_budget=%.2f",
+                    balances["quote_currency"], balances["usd"], balances["xrp"], portfolio.starting_budget,
                 )
             except Exception as exc:
                 logger.warning("Failed to sync Kraken balances on switch to live mode: %s", exc)
@@ -200,12 +206,13 @@ def clear_trade_history(db: Session = Depends(get_db)):
 @router.get("/export/trades")
 def export_trades_csv(db: Session = Depends(get_db)):
     trades = db.query(Trade).order_by(Trade.timestamp.asc()).all()
+    quote_currency = str(get_setting(db, "quote_currency")).upper().lower()
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow([
-        "id", "timestamp", "action", "xrp_amount", "usd_amount",
-        "price_at_trade", "fee_usd", "fee_type", "triggered_by",
-        "usd_balance_after", "xrp_balance_after", "ai_decision_id", "note",
+        "id", "timestamp", "action", "xrp_amount", f"{quote_currency}_amount",
+        "price_at_trade", f"fee_{quote_currency}", "fee_type", "triggered_by",
+        f"{quote_currency}_balance_after", "xrp_balance_after", "ai_decision_id", "note",
         "exchange_order_id",
     ])
     for t in trades:

@@ -28,13 +28,8 @@ def _currency_symbol(db: Session) -> str:
 
 
 def _kraken_pair_for_quote(db: Session) -> str:
-    quote = _quote_currency(db)
-    pair = str(get_setting(db, "kraken_pair")).upper().strip()
-    if quote == "GBP" and pair in {"", "XXRPZUSD", "XRPUSD"}:
-        return "XXRPZGBP"
-    if quote == "USD" and pair in {"", "XXRPZGBP", "XRPGBP"}:
-        return "XXRPZUSD"
-    return pair
+    from app.services.kraken_service import normalize_xrp_pair_for_quote
+    return normalize_xrp_pair_for_quote(get_setting(db, "kraken_pair"), _quote_currency(db))
 
 
 # ---------------------------------------------------------------------------
@@ -69,7 +64,7 @@ def reset_portfolio(db: Session) -> Portfolio:
     portfolio.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(portfolio)
-    logger.info("Portfolio reset to $%.2f", portfolio.starting_budget)
+    logger.info("Portfolio reset to %s%.2f", _currency_symbol(db), portfolio.starting_budget)
     return portfolio
 
 
@@ -83,7 +78,7 @@ def reset_roi(db: Session) -> Portfolio:
     portfolio.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(portfolio)
-    logger.info("ROI reset — new baseline $%.2f", portfolio.starting_budget)
+    logger.info("ROI reset - new baseline %s%.2f", _currency_symbol(db), portfolio.starting_budget)
     return portfolio
 
 
@@ -163,6 +158,8 @@ async def _execute_paper_trade(
 ) -> tuple[Trade, str | None]:
     """Original paper-trade logic, unchanged."""
     portfolio = get_portfolio(db)
+    quote = _quote_currency(db)
+    symbol = _currency_symbol(db)
 
     fee_pct = get_setting(db, f"{fee_type}_fee_pct") / 100.0
     usd_amount = xrp_amount * current_price
@@ -170,12 +167,12 @@ async def _execute_paper_trade(
     min_trade = get_setting(db, "risk_min_trade_usd")
 
     if usd_amount < float(min_trade):
-        return None, f"Trade too small: ${usd_amount:.2f} < min ${min_trade}"
+        return None, f"Trade too small: {symbol}{usd_amount:.2f} < min {symbol}{float(min_trade):.2f}"
 
     if action == "BUY":
         total_cost = usd_amount + fee_usd
         if portfolio.usd_balance < total_cost:
-            return None, f"Insufficient USD balance: ${portfolio.usd_balance:.2f} < ${total_cost:.2f}"
+            return None, f"Insufficient {quote} balance: {symbol}{portfolio.usd_balance:.2f} < {symbol}{total_cost:.2f}"
 
         # Max position check
         max_pct = get_setting(db, "risk_max_position_pct")
@@ -224,8 +221,8 @@ async def _execute_paper_trade(
     await notify_trade(db, trade)
 
     logger.info(
-        "Trade executed: %s %.6f XRP @ $%.6f (fee $%.4f)",
-        action, xrp_amount, current_price, fee_usd,
+        "Trade executed: %s %.6f XRP @ %s%.6f (fee %s%.4f)",
+        action, xrp_amount, symbol, current_price, symbol, fee_usd,
     )
     return trade, None
 
@@ -253,18 +250,20 @@ async def _execute_live_trade(
 
     # --- Risk / size checks (same gates as paper mode) ---
     portfolio = get_portfolio(db)
+    quote = _quote_currency(db)
+    symbol = _currency_symbol(db)
     fee_pct   = get_setting(db, f"{fee_type}_fee_pct") / 100.0
     usd_amount = xrp_amount * current_price
     fee_usd    = usd_amount * fee_pct
     min_trade  = get_setting(db, "risk_min_trade_usd")
 
     if usd_amount < float(min_trade):
-        return None, f"Trade too small: ${usd_amount:.2f} < min ${min_trade}"
+        return None, f"Trade too small: {symbol}{usd_amount:.2f} < min {symbol}{float(min_trade):.2f}"
 
     if action == "BUY":
         total_cost = usd_amount + fee_usd
         if portfolio.usd_balance < total_cost:
-            return None, f"Insufficient USD balance: ${portfolio.usd_balance:.2f} < ${total_cost:.2f}"
+            return None, f"Insufficient {quote} balance: {symbol}{portfolio.usd_balance:.2f} < {symbol}{total_cost:.2f}"
         max_pct = get_setting(db, "risk_max_position_pct")
         total_value = portfolio.total_value_usd(current_price)
         new_xrp_value = (portfolio.xrp_balance + xrp_amount) * current_price
@@ -333,7 +332,7 @@ async def _execute_live_trade(
     await notify_trade(db, trade)
 
     logger.info(
-        "Live trade executed: %s %.6f XRP @ $%.6f via Kraken (order %s)",
-        action, xrp_amount, filled_price, order_id,
+        "Live trade executed: %s %.6f XRP @ %s%.6f via Kraken (order %s)",
+        action, xrp_amount, symbol, filled_price, order_id,
     )
     return trade, None
