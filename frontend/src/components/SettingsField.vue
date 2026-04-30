@@ -31,7 +31,7 @@ const type = computed(() => {
   const d = props.meta?.default
   if (props.settingKey === 'ai_system_prompt') return 'textarea'
   if (props.settingKey === 'ai_provider_preset') return 'select-provider'
-  if (props.settingKey === 'ai_api_key') return 'password'
+  if (props.settingKey.includes('secret') || props.settingKey.includes('api_key') || props.settingKey === 'telegram_bot_token') return 'password'
   if (typeof d === 'boolean') return 'toggle'
   if (typeof d === 'number') return 'number'
   if (props.settingKey.includes('timeframe')) return 'select-timeframe'

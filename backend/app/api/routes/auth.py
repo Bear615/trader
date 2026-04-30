@@ -2,9 +2,10 @@ import secrets
 import time
 from collections import defaultdict
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Cookie, HTTPException, Request, Response, status
 from pydantic import BaseModel
 
+from app.core.auth import SESSION_COOKIE_NAME, create_admin_session, revoke_admin_session
 from app.core.config import config
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -43,7 +44,7 @@ class LoginRequest(BaseModel):
 
 
 @router.post("/login")
-async def login(body: LoginRequest, request: Request):
+async def login(body: LoginRequest, request: Request, response: Response):
     """
     Verify a PIN and return the session token on success.
     Rate-limited to 5 attempts per IP per 15 minutes.
@@ -70,4 +71,24 @@ async def login(body: LoginRequest, request: Request):
     # Successful login — clear this IP's counter
     _attempts[ip]["count"] = 0
 
-    return {"token": config.admin_api_key}
+    token = create_admin_session()
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=token,
+        httponly=True,
+        secure=request.url.scheme == "https",
+        samesite="strict",
+        max_age=8 * 60 * 60,
+    )
+
+    return {"ok": True}
+
+
+@router.post("/logout")
+async def logout(
+    response: Response,
+    trader_admin_session: str | None = Cookie(default=None),
+):
+    revoke_admin_session(trader_admin_session)
+    response.delete_cookie(SESSION_COOKIE_NAME, samesite="strict")
+    return {"ok": True}

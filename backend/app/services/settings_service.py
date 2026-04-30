@@ -10,6 +10,14 @@ from typing import Any
 from sqlalchemy.orm import Session
 from app.models.settings import Setting
 
+MASKED_SECRET = "********"
+SECRET_SETTING_KEYS = {
+    "ai_api_key",
+    "kraken_api_key",
+    "kraken_api_secret",
+    "telegram_bot_token",
+}
+
 # ---------------------------------------------------------------------------
 # Default settings schema
 # ---------------------------------------------------------------------------
@@ -37,6 +45,7 @@ DEFAULTS: dict[str, tuple[Any, str]] = {
     "ai_temperature":                   (0.3,   "Temperature for the AI model (0.0 = deterministic, 2.0 = creative)"),
     "ai_decision_interval_seconds":     (300,   "How often the AI evaluates the market and considers a trade (seconds)"),
     "ai_price_window":                  (50,    "Number of recent price points to include in the AI prompt"),
+    "ai_price_history_min_change_pct":  (0.0,   "Minimum % move from the last included price before another price point is shown to the AI (0 = include every point)"),
     "ai_max_prompt_tokens":             (0,     "Trim the oldest price history so the prompt stays under this many tokens (0 = no limit). Rough estimate: 1 token ≈ 4 characters."),
     "ai_price_change_threshold_pct":    (1.0,   "Only query the AI when price has moved this % from the last AI-evaluated price (0 = disabled)"),
     "ai_max_trade_pct":                 (10.0,  "Maximum trade size as % of current portfolio value"),

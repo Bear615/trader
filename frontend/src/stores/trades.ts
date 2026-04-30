@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import api from '@/api/client'
-import { useSettingsStore } from '@/stores/settings'
 import { usePortfolioStore } from '@/stores/portfolio'
 import type { Trade, PaginatedResponse } from '@/api/types'
 
@@ -34,7 +33,6 @@ export const useTradesStore = defineStore('trades', () => {
     const socket = new WebSocket(`${protocol}://${window.location.host}/ws/trades`)
     socket.onopen = () => {
       // Send auth as first message — key must never appear in the URL
-      socket.send(JSON.stringify({ auth: useSettingsStore().adminKey }))
     }
     socket.onmessage = (e) => {
       const trade: Trade = JSON.parse(e.data)

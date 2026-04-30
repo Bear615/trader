@@ -145,6 +145,45 @@ def _format_recent_trades(trades: list[Trade]) -> str:
     )
 
 
+def _significant_price_points(
+    price_points_desc: list[PricePoint],
+    limit: int,
+    min_change_pct: float,
+) -> list[PricePoint]:
+    """
+    Keep the most recent price, then walk backward until we have `limit` points
+    whose prices moved enough from the last point already kept.
+    """
+    if limit <= 0:
+        return []
+    if min_change_pct <= 0:
+        points = price_points_desc[:limit]
+        points.reverse()
+        return points
+
+    kept: list[PricePoint] = []
+    last_kept_price: float | None = None
+    for point in price_points_desc:
+        if last_kept_price is None:
+            kept.append(point)
+            last_kept_price = point.price
+        elif last_kept_price == 0:
+            if point.price != 0:
+                kept.append(point)
+                last_kept_price = point.price
+        else:
+            pct_change = abs(point.price - last_kept_price) / abs(last_kept_price) * 100
+            if pct_change >= min_change_pct:
+                kept.append(point)
+                last_kept_price = point.price
+
+        if len(kept) >= limit:
+            break
+
+    kept.reverse()
+    return kept
+
+
 def build_prompt(db: Session, current_price: float, price_points: list[PricePoint]) -> str:
     portfolio = get_portfolio(db)
     total_value = portfolio.total_value_usd(current_price)
@@ -263,13 +302,15 @@ async def make_decision(db: Session, bypass_guards: bool = False) -> Optional[AI
             return None
 
     window = int(get_setting(db, "ai_price_window"))
-    price_points = (
+    min_history_change_pct = float(get_setting(db, "ai_price_history_min_change_pct"))
+    scan_limit = max(window, min(window * 20, 5000)) if min_history_change_pct > 0 else window
+    raw_price_points = (
         db.query(PricePoint)
         .order_by(PricePoint.timestamp.desc())
-        .limit(window)
+        .limit(scan_limit)
         .all()
     )
-    price_points.reverse()
+    price_points = _significant_price_points(raw_price_points, window, min_history_change_pct)
 
     system_prompt = str(get_setting(db, "ai_system_prompt"))
     user_prompt = build_prompt(db, current_price, price_points)

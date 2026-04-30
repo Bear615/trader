@@ -113,9 +113,27 @@ async def get_balances(api_key: str, api_secret: str) -> dict:
     Kraken labels: ZUSD, XXRP.
     """
     result = await _private_post("Balance", {}, api_key, api_secret)
-    # Kraken may label XRP as XXRP or XRP depending on account type
-    xrp = float(result.get("XXRP") or result.get("XRP") or 0)
-    usd = float(result.get("ZUSD") or result.get("USD") or 0)
+
+    def normalized_asset(asset: str) -> str:
+        base = asset.upper().split(".", 1)[0]
+        if base.startswith(("X", "Z")) and len(base) > 3:
+            return base[1:]
+        return base
+
+    def total_for(*aliases: str) -> float:
+        wanted = {alias.upper() for alias in aliases}
+        total = 0.0
+        for asset, raw_amount in result.items():
+            if normalized_asset(asset) in wanted:
+                try:
+                    total += float(raw_amount)
+                except (TypeError, ValueError):
+                    logger.warning("Ignoring non-numeric Kraken balance for asset %s", asset)
+        return total
+
+    # Kraken may label assets as ZUSD, USD, XXRP, XRP, or with suffixes like ZUSD.F.
+    xrp = total_for("XRP")
+    usd = total_for("USD")
     return {"usd": usd, "xrp": xrp}
 
 

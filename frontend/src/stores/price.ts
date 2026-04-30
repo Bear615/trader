@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '@/api/client'
-import { useSettingsStore } from '@/stores/settings'
 import type { PricePoint } from '@/api/types'
 
 export const usePriceStore = defineStore('price', () => {
@@ -40,7 +39,6 @@ export const usePriceStore = defineStore('price', () => {
 
     socket.onopen = () => {
       // Send auth as first message — key must never appear in the URL
-      socket.send(JSON.stringify({ auth: useSettingsStore().adminKey }))
       connected.value = true
     }
     socket.onmessage = (event) => {

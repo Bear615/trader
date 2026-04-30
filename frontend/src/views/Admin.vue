@@ -64,8 +64,8 @@ async function loginWithPin(pinValue: string) {
   loginError.value = ''
   loginLocked.value = false
   try {
-    const res = await api.post<{ token: string }>('/auth/login', { pin: pinValue })
-    settingsStore.setAdminKey(res.data.token)
+    await api.post('/auth/login', { pin: pinValue })
+    settingsStore.setAdminKey('1')
     await settingsStore.fetchSettings()
     const redirect = route.query.redirect as string | undefined
     if (redirect) {
@@ -89,7 +89,12 @@ async function loginWithPin(pinValue: string) {
 // Keep backward compat alias used by template
 function login() { loginWithPin(keyInput.value) }
 
-function logout() {
+async function logout() {
+  try {
+    await api.post('/auth/logout')
+  } catch {
+    // Local logout should still clear the UI even if the server session expired.
+  }
   settingsStore.clearAdminKey()
 }
 
@@ -168,7 +173,7 @@ const groups = computed(() => [
     id: 'ai',
     label: 'AI Configuration',
     icon: 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z',
-    keys: ['ai_enabled', 'ai_model', 'ai_temperature', 'ai_decision_interval_seconds', 'ai_price_window', 'ai_max_prompt_tokens', 'ai_price_change_threshold_pct', 'ai_max_trade_pct', 'ai_system_prompt'],
+    keys: ['ai_enabled', 'ai_model', 'ai_temperature', 'ai_decision_interval_seconds', 'ai_price_window', 'ai_price_history_min_change_pct', 'ai_max_prompt_tokens', 'ai_price_change_threshold_pct', 'ai_max_trade_pct', 'ai_system_prompt'],
   },
   {
     id: 'ai_provider',

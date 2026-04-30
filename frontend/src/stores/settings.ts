@@ -3,23 +3,34 @@ import { ref, computed } from 'vue'
 import api from '@/api/client'
 import type { SettingsResponse } from '@/api/types'
 
+const MASKED_SECRET = '********'
+const SECRET_SETTING_KEYS = new Set([
+  'ai_api_key',
+  'kraken_api_key',
+  'kraken_api_secret',
+  'telegram_bot_token',
+])
+
 export const useSettingsStore = defineStore('settings', () => {
   const settings = ref<Record<string, unknown>>({})
   const meta = ref<SettingsResponse['meta']>({})
   const loading = ref(false)
   const saving = ref(false)
-  const adminKey = ref(sessionStorage.getItem('adminKey') || '')
+  const adminKey = ref(sessionStorage.getItem('adminSession') || '')
+  sessionStorage.removeItem('adminKey')
 
   const isAdmin = computed(() => adminKey.value.length > 0)
 
   function setAdminKey(key: string) {
     adminKey.value = key
-    sessionStorage.setItem('adminKey', key)
+    sessionStorage.removeItem('adminKey')
+    sessionStorage.setItem('adminSession', key)
   }
 
   function clearAdminKey() {
     adminKey.value = ''
     sessionStorage.removeItem('adminKey')
+    sessionStorage.removeItem('adminSession')
   }
 
   async function fetchSettings() {
@@ -37,7 +48,13 @@ export const useSettingsStore = defineStore('settings', () => {
     saving.value = true
     try {
       await api.put('/admin/settings', { updates })
-      Object.assign(settings.value, updates)
+      const localUpdates = { ...updates }
+      for (const key of Object.keys(localUpdates)) {
+        if (SECRET_SETTING_KEYS.has(key) && localUpdates[key]) {
+          localUpdates[key] = MASKED_SECRET
+        }
+      }
+      Object.assign(settings.value, localUpdates)
     } finally {
       saving.value = false
     }

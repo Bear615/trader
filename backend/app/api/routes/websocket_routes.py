@@ -2,6 +2,7 @@ import json
 import secrets
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from app.core.websocket import ws_manager
+from app.core.auth import SESSION_COOKIE_NAME, validate_admin_session
 from app.core.config import config
 
 router = APIRouter(tags=["websocket"])
@@ -32,6 +33,15 @@ async def websocket_endpoint(channel: str, websocket: WebSocket):
         return
 
     await websocket.accept()
+
+    if validate_admin_session(websocket.cookies.get(SESSION_COOKIE_NAME)):
+        ws_manager.connect_accepted(channel, websocket)
+        try:
+            while True:
+                await websocket.receive_text()
+        except WebSocketDisconnect:
+            ws_manager.disconnect(channel, websocket)
+        return
 
     # ── First-message auth handshake ──────────────────────────────────────
     try:

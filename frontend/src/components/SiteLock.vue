@@ -27,8 +27,9 @@ async function submit(pinValue: string) {
   error.value = ''
 
   try {
-    const res = await axios.post<{ token: string }>('/api/v1/auth/login', { pin: pinValue })
-    sessionStorage.setItem('adminKey', res.data.token)
+    await axios.post('/api/v1/auth/login', { pin: pinValue }, { withCredentials: true })
+    sessionStorage.removeItem('adminKey')
+    sessionStorage.setItem('adminSession', '1')
     sessionStorage.setItem(SESSION_KEY, '1')
     emit('unlocked')
   } catch (e: unknown) {

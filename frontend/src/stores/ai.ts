@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import api from '@/api/client'
-import { useSettingsStore } from '@/stores/settings'
 import type { AIDecision, PaginatedResponse } from '@/api/types'
 
 export const useAIStore = defineStore('ai', () => {
@@ -37,7 +36,6 @@ export const useAIStore = defineStore('ai', () => {
     const socket = new WebSocket(`${protocol}://${window.location.host}/ws/decisions`)
     socket.onopen = () => {
       // Send auth as first message — key must never appear in the URL
-      socket.send(JSON.stringify({ auth: useSettingsStore().adminKey }))
     }
     socket.onmessage = (e) => {
       const decision: AIDecision = JSON.parse(e.data)
