@@ -215,8 +215,9 @@ def build_prompt(db: Session, current_price: float, price_points: list[PricePoin
 
     prompt = f"""MARKET
 time {datetime.utcnow().strftime('%Y-%m-%dT%H:%M')} UTC
-price {current_price:.6f}
+price {current_price:.6f} per XRP
 quote_currency {quote_currency}
+quote_currency_note Use {quote_currency} for every balance, fee, and max-trade interpretation below. Do not assume USD unless quote_currency is USD.
 
 PRICE HISTORY ({len(price_points)} points, format: datetime price)
 {_format_price_table(price_points)}
@@ -244,7 +245,8 @@ take_profit_pct {take_profit}
 max_daily {max_daily} used {daily_trades}
 min_trade_quote {min_trade}
 
-xrp_amount must not exceed {max_xrp:.4f}. If HOLD set xrp_amount null."""
+xrp_amount must not exceed {max_xrp:.4f}. If HOLD set xrp_amount null.
+Remember: the quote currency is {quote_currency}, not USD unless quote_currency is USD."""
 
     return prompt
 

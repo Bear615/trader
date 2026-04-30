@@ -201,13 +201,16 @@ async def _ai_decision_for_backtest(
             for p in price_points
         )
         avg_buy = portfolio.avg_buy_price()
-        user_msg = f"""Current XRP price: ${current_price:.6f}
-USD balance: ${portfolio.usd:.4f}
+        quote_symbol = "£" if quote_currency == "GBP" else "$"
+        user_msg = f"""Current XRP price: {quote_symbol}{current_price:.6f} per XRP
+Quote currency: {quote_currency}
+Quote balance: {quote_symbol}{portfolio.usd:.4f}
 XRP balance: {portfolio.xrp:.6f}
-Total value: ${total_value:.4f}
-Avg buy price: {'$' + f'{avg_buy:.6f}' if avg_buy else 'N/A'}
+Total value: {quote_symbol}{total_value:.4f}
+Avg buy price: {quote_symbol + f'{avg_buy:.6f}' if avg_buy else 'N/A'}
 Recent prices:\n{rows}
-Max trade: {max_xrp:.4f} XRP (${max_trade_usd:.2f})"""
+Max trade: {max_xrp:.4f} XRP ({quote_symbol}{max_trade_usd:.2f})
+Remember: the quote currency is {quote_currency}, not USD unless quote_currency is USD."""
 
         if preset == "ollama":
             base_url = openai_params.get("base_url") or PROVIDER_PRESETS["ollama"]
