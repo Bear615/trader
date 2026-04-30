@@ -235,11 +235,12 @@ async def kraken_test_connection(db: Session = Depends(get_db)):
 
     api_key    = get_setting(db, "kraken_api_key")
     api_secret = get_setting(db, "kraken_api_secret")
+    pair       = get_setting(db, "kraken_pair")
     if not api_key or not api_secret:
         raise HTTPException(status_code=400, detail="Kraken API credentials not configured")
     try:
         quote_currency = str(get_setting(db, "quote_currency")).upper()
-        balances = await kraken_service.get_balances(api_key, api_secret, quote_currency)
+        balances = await kraken_service.get_balances(api_key, api_secret, quote_currency, pair)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc))
     return {"ok": True, "usd": balances["usd"], "quote_currency": balances["quote_currency"], "xrp": balances["xrp"]}
@@ -255,11 +256,12 @@ async def kraken_sync_balance(db: Session = Depends(get_db)):
 
     api_key    = get_setting(db, "kraken_api_key")
     api_secret = get_setting(db, "kraken_api_secret")
+    pair       = get_setting(db, "kraken_pair")
     if not api_key or not api_secret:
         raise HTTPException(status_code=400, detail="Kraken API credentials not configured")
     try:
         quote_currency = str(get_setting(db, "quote_currency")).upper()
-        balances = await kraken_service.get_balances(api_key, api_secret, quote_currency)
+        balances = await kraken_service.get_balances(api_key, api_secret, quote_currency, pair)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc))
     portfolio = get_portfolio(db)

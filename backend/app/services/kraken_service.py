@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 KRAKEN_BASE = "https://api.kraken.com"
 _PUBLIC_PATH = "/0/public"
 _PRIVATE_PATH = "/0/private"
+COMMON_QUOTE_CURRENCIES = ("USD", "GBP", "EUR")
 
 
 # ---------------------------------------------------------------------------
@@ -106,7 +107,12 @@ async def get_ticker(pair: str) -> dict:
 # Private / authenticated helpers
 # ---------------------------------------------------------------------------
 
-async def get_balances(api_key: str, api_secret: str, quote_currency: str = "USD") -> dict:
+async def get_balances(
+    api_key: str,
+    api_secret: str,
+    quote_currency: str = "USD",
+    pair: str | None = None,
+) -> dict:
     """
     Fetch account balances.
     Returns {usd: float, quote: float, quote_currency: str, xrp: float}.
@@ -132,12 +138,43 @@ async def get_balances(api_key: str, api_secret: str, quote_currency: str = "USD
                     logger.warning("Ignoring non-numeric Kraken balance for asset %s", asset)
         return total
 
+    def pair_quote_currency(pair: str | None) -> str | None:
+        if not pair:
+            return None
+        compact = pair.upper().replace("/", "").replace("-", "").strip()
+        for quote in COMMON_QUOTE_CURRENCIES:
+            for suffix in (quote, f"Z{quote}"):
+                if compact.endswith(suffix):
+                    return quote
+        return None
+
     quote = quote_currency.upper()
+    balances_by_currency = {code: total_for(code) for code in COMMON_QUOTE_CURRENCIES}
 
     # Kraken may label assets as ZUSD, USD, XXRP, XRP, ZGBP, GBP, or suffixed forms like ZUSD.F.
     xrp = total_for("XRP")
-    quote_balance = total_for(quote)
-    return {"usd": quote_balance, "quote": quote_balance, "quote_currency": quote, "xrp": xrp}
+    quote_balance = balances_by_currency.get(quote, 0.0)
+
+    # If the selected quote balance is empty, fall back to the quote implied by the configured pair
+    # so the app still picks up balances when the pair and setting are out of sync.
+    pair_quote = pair_quote_currency(pair)
+    if quote_balance == 0.0 and pair_quote and balances_by_currency.get(pair_quote, 0.0) > 0:
+        quote = pair_quote
+        quote_balance = balances_by_currency[pair_quote]
+    if quote_balance == 0.0:
+        for fallback_quote in COMMON_QUOTE_CURRENCIES:
+            if balances_by_currency.get(fallback_quote, 0.0) > 0:
+                quote = fallback_quote
+                quote_balance = balances_by_currency[fallback_quote]
+                break
+
+    return {
+        "usd": quote_balance,
+        "quote": quote_balance,
+        "quote_currency": quote,
+        "xrp": xrp,
+        "balances": balances_by_currency,
+    }
 
 
 async def place_order(
