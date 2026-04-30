@@ -188,6 +188,7 @@ def build_prompt(db: Session, current_price: float, price_points: list[PricePoin
     portfolio = get_portfolio(db)
     quote_currency = str(get_setting(db, "quote_currency")).upper()
     total_value = portfolio.total_value_usd(current_price)
+    xrp_value = portfolio.xrp_balance * current_price
     roi = ((total_value - portfolio.starting_budget) / portfolio.starting_budget * 100) if portfolio.starting_budget else 0
 
     recent_trades = (
@@ -225,6 +226,7 @@ PRICE HISTORY ({len(price_points)} points, format: datetime price)
 PORTFOLIO
 quote_balance {portfolio.usd_balance:.4f}
 xrp {portfolio.xrp_balance:.6f}
+xrp_value {xrp_value:.4f}
 total {total_value:.4f}
 start {portfolio.starting_budget:.4f}
 roi {roi:+.2f}

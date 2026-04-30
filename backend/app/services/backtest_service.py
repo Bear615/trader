@@ -193,6 +193,7 @@ async def _ai_decision_for_backtest(
         openai_params = {k: v for k, v in client_params.items() if not k.startswith("_")}
 
         total_value = portfolio.total_value(current_price)
+        xrp_value = portfolio.xrp * current_price
         max_trade_usd = total_value * (max_trade_pct / 100)
         max_xrp = max_trade_usd / current_price if current_price > 0 else 0
 
@@ -206,6 +207,7 @@ async def _ai_decision_for_backtest(
 Quote currency: {quote_currency}
 Quote balance: {quote_symbol}{portfolio.usd:.4f}
 XRP balance: {portfolio.xrp:.6f}
+XRP value: {quote_symbol}{xrp_value:.4f}
 Total value: {quote_symbol}{total_value:.4f}
 Avg buy price: {quote_symbol + f'{avg_buy:.6f}' if avg_buy else 'N/A'}
 Recent prices:\n{rows}
