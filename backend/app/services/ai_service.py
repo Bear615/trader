@@ -186,6 +186,7 @@ def _significant_price_points(
 
 def build_prompt(db: Session, current_price: float, price_points: list[PricePoint]) -> str:
     portfolio = get_portfolio(db)
+    quote_currency = str(get_setting(db, "quote_currency")).upper()
     total_value = portfolio.total_value_usd(current_price)
     roi = ((total_value - portfolio.starting_budget) / portfolio.starting_budget * 100) if portfolio.starting_budget else 0
 
@@ -209,18 +210,19 @@ def build_prompt(db: Session, current_price: float, price_points: list[PricePoin
     max_daily = get_setting(db, "risk_max_daily_trades")
     min_trade = get_setting(db, "risk_min_trade_usd")
 
-    max_trade_usd = total_value * (float(max_trade_pct) / 100)
-    max_xrp = max_trade_usd / current_price if current_price > 0 else 0
+    max_trade_quote = total_value * (float(max_trade_pct) / 100)
+    max_xrp = max_trade_quote / current_price if current_price > 0 else 0
 
     prompt = f"""MARKET
 time {datetime.utcnow().strftime('%Y-%m-%dT%H:%M')} UTC
 price {current_price:.6f}
+quote_currency {quote_currency}
 
 PRICE HISTORY ({len(price_points)} points, format: datetime price)
 {_format_price_table(price_points)}
 
 PORTFOLIO
-usd {portfolio.usd_balance:.4f}
+quote_balance {portfolio.usd_balance:.4f}
 xrp {portfolio.xrp_balance:.6f}
 total {total_value:.4f}
 start {portfolio.starting_budget:.4f}
@@ -234,13 +236,13 @@ RECENT TRADES (format: datetime action xrp_amount price fee)
 CONSTRAINTS
 taker_fee {taker_fee}
 maker_fee {maker_fee}
-max_trade_usd {max_trade_usd:.2f}
+max_trade_quote {max_trade_quote:.2f}
 max_xrp {max_xrp:.4f}
 max_position_pct {max_position_pct}
 stop_loss_pct {stop_loss}
 take_profit_pct {take_profit}
 max_daily {max_daily} used {daily_trades}
-min_trade_usd {min_trade}
+min_trade_quote {min_trade}
 
 xrp_amount must not exceed {max_xrp:.4f}. If HOLD set xrp_amount null."""
 
@@ -303,13 +305,8 @@ async def make_decision(db: Session, bypass_guards: bool = False) -> Optional[AI
 
     window = int(get_setting(db, "ai_price_window"))
     min_history_change_pct = float(get_setting(db, "ai_price_history_min_change_pct"))
-    scan_limit = max(window, min(window * 20, 5000)) if min_history_change_pct > 0 else window
-    raw_price_points = (
-        db.query(PricePoint)
-        .order_by(PricePoint.timestamp.desc())
-        .limit(scan_limit)
-        .all()
-    )
+    query = db.query(PricePoint).order_by(PricePoint.timestamp.desc())
+    raw_price_points = query.all() if min_history_change_pct > 0 else query.limit(window).all()
     price_points = _significant_price_points(raw_price_points, window, min_history_change_pct)
 
     system_prompt = str(get_setting(db, "ai_system_prompt"))

@@ -7,3 +7,11 @@ export function formatDate(iso: string): string {
     minute: '2-digit',
   })
 }
+
+export function currencySymbol(currency?: string): string {
+  return currency?.toUpperCase() === 'GBP' ? '£' : '$'
+}
+
+export function currencyCode(settingsCurrency: unknown, fallback?: string): string {
+  return String(settingsCurrency || fallback || 'USD').toUpperCase()
+}

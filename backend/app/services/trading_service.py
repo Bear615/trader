@@ -19,6 +19,24 @@ from app.services.settings_service import get_setting
 logger = logging.getLogger(__name__)
 
 
+def _quote_currency(db: Session) -> str:
+    return str(get_setting(db, "quote_currency")).upper()
+
+
+def _currency_symbol(db: Session) -> str:
+    return "£" if _quote_currency(db) == "GBP" else "$"
+
+
+def _kraken_pair_for_quote(db: Session) -> str:
+    quote = _quote_currency(db)
+    pair = str(get_setting(db, "kraken_pair")).upper().strip()
+    if quote == "GBP" and pair in {"", "XXRPZUSD", "XRPUSD"}:
+        return "XXRPZGBP"
+    if quote == "USD" and pair in {"", "XXRPZGBP", "XRPGBP"}:
+        return "XXRPZUSD"
+    return pair
+
+
 # ---------------------------------------------------------------------------
 # Portfolio helpers
 # ---------------------------------------------------------------------------
@@ -227,7 +245,7 @@ async def _execute_live_trade(
 
     api_key    = get_setting(db, "kraken_api_key")
     api_secret = get_setting(db, "kraken_api_secret")
-    pair       = get_setting(db, "kraken_pair")
+    pair       = _kraken_pair_for_quote(db)
     order_type = get_setting(db, "kraken_order_type")
 
     if not api_key or not api_secret:

@@ -31,6 +31,7 @@ const type = computed(() => {
   const d = props.meta?.default
   if (props.settingKey === 'ai_system_prompt') return 'textarea'
   if (props.settingKey === 'ai_provider_preset') return 'select-provider'
+  if (props.settingKey === 'quote_currency') return 'select-currency'
   if (props.settingKey.includes('secret') || props.settingKey.includes('api_key') || props.settingKey === 'telegram_bot_token') return 'password'
   if (typeof d === 'boolean') return 'toggle'
   if (typeof d === 'number') return 'number'
@@ -62,7 +63,7 @@ function handleToggle() {
   emit('save', local.value)
 }
 
-const ACRONYMS = new Set(['ai', 'api', 'url', 'id', 'usd', 'xrp', 'ui'])
+const ACRONYMS = new Set(['ai', 'api', 'url', 'id', 'usd', 'gbp', 'xrp', 'ui'])
 
 const label = computed(() => {
   return props.settingKey
@@ -172,6 +173,13 @@ const statusColor = computed(() => {
       <template v-else-if="type === 'select-timeframe'">
         <select v-model="local" class="select w-28" @change="handleSave">
           <option v-for="tf in ['1h','6h','24h','7d','30d']" :key="tf" :value="tf">{{ tf }}</option>
+        </select>
+      </template>
+
+      <template v-else-if="type === 'select-currency'">
+        <select v-model="local" class="select w-28" @change="handleSave">
+          <option value="USD">USD</option>
+          <option value="GBP">GBP</option>
         </select>
       </template>
 

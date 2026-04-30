@@ -7,6 +7,7 @@ import { useAIStore } from '@/stores/ai'
 import PriceChart from '@/components/PriceChart.vue'
 import AIDecisionCard from '@/components/AIDecisionCard.vue'
 import TradeRow from '@/components/TradeRow.vue'
+import { currencySymbol, currencyCode } from '@/utils/format'
 
 const priceStore = usePriceStore()
 const portfolioStore = usePortfolioStore()
@@ -36,6 +37,8 @@ watch(timeframe, () => priceStore.fetchHistory(timeframe.value))
 
 const p = computed(() => portfolioStore.portfolio)
 const m = computed(() => portfolioStore.metrics)
+const quoteCurrency = computed(() => currencyCode(m.value?.quote_currency, p.value?.quote_currency))
+const quoteSymbol = computed(() => currencySymbol(quoteCurrency.value))
 
 const portfolioValue = computed(() => {
   const v = p.value?.total_value_usd ?? p.value?.usd_balance ?? 0
@@ -78,7 +81,7 @@ async function handleResetROI() {
       <div class="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5 flex flex-col gap-4">
         <div class="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Portfolio Value</div>
         <div>
-          <div class="text-3xl font-bold font-mono tabular-nums text-gray-100 leading-none">${{ portfolioValue }}</div>
+          <div class="text-3xl font-bold font-mono tabular-nums text-gray-100 leading-none">{{ quoteSymbol }}{{ portfolioValue }}</div>
           <div class="mt-2">
             <span
               :class="[
@@ -98,9 +101,9 @@ async function handleResetROI() {
         </div>
         <div class="pt-3 border-t border-white/[0.06] grid grid-cols-2 gap-4">
           <div>
-            <div class="text-[10px] text-gray-600 uppercase tracking-wider mb-1">USD</div>
+            <div class="text-[10px] text-gray-600 uppercase tracking-wider mb-1">{{ quoteCurrency }}</div>
             <div class="text-sm font-mono font-medium text-gray-300 tabular-nums">
-              ${{ (p?.usd_balance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+              {{ quoteSymbol }}{{ (p?.usd_balance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
             </div>
           </div>
           <div>
@@ -132,15 +135,15 @@ async function handleResetROI() {
         <div class="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 flex flex-col justify-between gap-2">
           <div class="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Fees Paid</div>
           <div class="text-2xl font-bold font-mono tabular-nums text-gray-100">
-            {{ m?.total_fees_usd != null ? '$' + m.total_fees_usd.toFixed(2) : '—' }}
+            {{ m?.total_fees_usd != null ? quoteSymbol + m.total_fees_usd.toFixed(2) : '—' }}
           </div>
-          <div class="text-[11px] text-gray-600">total USD</div>
+          <div class="text-[11px] text-gray-600">total {{ quoteCurrency }}</div>
         </div>
 
         <div class="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 flex flex-col justify-between gap-2">
           <div class="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Avg Buy</div>
           <div class="text-2xl font-bold font-mono tabular-nums text-gray-100">
-            {{ m?.avg_buy_price ? '$' + m.avg_buy_price.toFixed(4) : '—' }}
+            {{ m?.avg_buy_price ? quoteSymbol + m.avg_buy_price.toFixed(4) : '—' }}
           </div>
           <div class="text-[11px] text-gray-600">per XRP</div>
         </div>
@@ -152,7 +155,7 @@ async function handleResetROI() {
     <div class="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
       <div class="flex items-center justify-between mb-4">
         <div>
-          <h2 class="text-sm font-semibold text-gray-200">XRP / USD</h2>
+          <h2 class="text-sm font-semibold text-gray-200">XRP / {{ quoteCurrency }}</h2>
           <p class="text-xs text-gray-500 mt-0.5">DIA Oracle · real-time</p>
         </div>
         <div class="flex gap-1">
@@ -169,7 +172,7 @@ async function handleResetROI() {
           >{{ tf }}</button>
         </div>
       </div>
-      <PriceChart :data="priceStore.history" :loading="priceStore.loading" />
+      <PriceChart :data="priceStore.history" :loading="priceStore.loading" :quote-currency="quoteCurrency" />
     </div>
 
     <!-- Recent trades + AI decisions -->

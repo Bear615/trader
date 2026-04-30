@@ -48,11 +48,12 @@ const errorMsg = ref('')
 
 // Live mode toggle state
 const showLiveConfirmModal = ref(false)
-const krakenTestResult = ref<{ ok: boolean; usd?: number; xrp?: number; error?: string } | null>(null)
+const krakenTestResult = ref<{ ok: boolean; usd?: number; xrp?: number; quote_currency?: string; error?: string } | null>(null)
 const krakenTestLoading = ref(false)
 const krakenSyncLoading = ref(false)
 
 const isLiveMode = computed(() => settingsStore.settings['trading_mode'] === 'live')
+const quoteCurrency = computed(() => String(settingsStore.settings['quote_currency'] || 'USD').toUpperCase())
 
 onMounted(async () => {
   if (settingsStore.isAdmin) {
@@ -132,7 +133,7 @@ async function testKrakenConnection() {
   krakenTestLoading.value = true
   try {
     const res = await api.post('/admin/kraken/test-connection')
-    krakenTestResult.value = { ok: true, usd: res.data.usd, xrp: res.data.xrp }
+    krakenTestResult.value = { ok: true, usd: res.data.usd, xrp: res.data.xrp, quote_currency: res.data.quote_currency }
   } catch (e: unknown) {
     const msg = axios.isAxiosError(e) ? (e.response?.data?.detail ?? e.message) : String(e)
     krakenTestResult.value = { ok: false, error: msg }
@@ -147,7 +148,10 @@ async function syncKrakenBalance() {
   successMsg.value = ''
   try {
     const res = await api.post('/admin/kraken/sync-balance')
-    successMsg.value = `Balances synced — USD: $${res.data.usd.toFixed(2)}, XRP: ${res.data.xrp.toFixed(6)}`
+    const syncedCurrency = res.data.quote_currency ?? quoteCurrency.value
+    const syncedSymbol = syncedCurrency === 'GBP' ? '£' : '$'
+    successMsg.value = `Balances synced — ${syncedCurrency}: ${syncedSymbol}${res.data.usd.toFixed(2)}, XRP: ${res.data.xrp.toFixed(6)}`
+    await Promise.all([portfolioStore.fetchPortfolio(), portfolioStore.fetchMetrics()])
     setTimeout(() => { successMsg.value = '' }, 5000)
   } catch (e: unknown) {
     errorMsg.value = axios.isAxiosError(e) ? (e.response?.data?.detail ?? e.message) : String(e)
@@ -161,7 +165,7 @@ const groups = computed(() => [
     id: 'data',
     label: 'Exchange & Data',
     icon: 'M13 10V3L4 14h7v7l9-11h-7z',
-    keys: ['poll_interval_seconds', 'price_history_retention_days'],
+    keys: ['quote_currency', 'poll_interval_seconds', 'price_history_retention_days'],
   },
   {
     id: 'portfolio',
@@ -490,19 +494,18 @@ async function clearTrades() {
                 Test Connection
               </button>
               <button
-                v-if="isLiveMode"
                 @click="syncKrakenBalance"
                 :disabled="krakenSyncLoading"
                 class="btn btn-ghost btn-sm"
               >
                 <div v-if="krakenSyncLoading" class="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin" />
-                Sync Balance Now
+                Poll {{ quoteCurrency }} Balance
               </button>
             </div>
             <div v-if="krakenTestResult !== null" class="rounded-lg px-3 py-2 text-xs font-mono"
               :class="krakenTestResult.ok ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-300' : 'bg-rose-500/10 border border-rose-500/20 text-rose-300'">
               <template v-if="krakenTestResult.ok">
-                Connected — USD: ${{ krakenTestResult.usd?.toFixed(2) }}, XRP: {{ krakenTestResult.xrp?.toFixed(6) }}
+                Connected — {{ krakenTestResult.quote_currency ?? quoteCurrency }}: {{ (krakenTestResult.quote_currency ?? quoteCurrency) === 'GBP' ? '£' : '$' }}{{ krakenTestResult.usd?.toFixed(2) }}, XRP: {{ krakenTestResult.xrp?.toFixed(6) }}
               </template>
               <template v-else>
                 {{ krakenTestResult.error }}
@@ -540,7 +543,7 @@ async function clearTrades() {
 
           <div class="card-sm space-y-2">
             <div class="text-sm font-medium text-gray-300">Reset Portfolio</div>
-            <p class="text-xs text-gray-500">Reset USD balance to starting budget; wipe XRP balance. Trades are kept.</p>
+            <p class="text-xs text-gray-500">Reset {{ quoteCurrency }} balance to starting budget; wipe XRP balance. Trades are kept.</p>
             <button @click="resetPortfolio" :disabled="dangerLoading['reset']" class="btn btn-danger btn-sm">
               <div v-if="dangerLoading['reset']" class="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
               Reset Portfolio

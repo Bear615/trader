@@ -80,7 +80,8 @@ async def update_settings(body: SettingsUpdate, db: Session = Depends(get_db)):
         if api_key and api_secret:
             try:
                 from app.services.kraken_service import get_balances
-                balances = await get_balances(api_key, api_secret)
+                quote_currency = str(get_setting(db, "quote_currency")).upper()
+                balances = await get_balances(api_key, api_secret, quote_currency)
                 portfolio = get_portfolio(db)
                 latest = get_latest_price(db)
                 current_price = latest.price if latest else 0.0
@@ -106,13 +107,13 @@ async def update_settings(body: SettingsUpdate, db: Session = Depends(get_db)):
 @router.post("/portfolio/reset")
 def reset(db: Session = Depends(get_db)):
     portfolio = reset_portfolio(db)
-    return portfolio.to_dict()
+    return portfolio.to_dict(quote_currency=str(get_setting(db, "quote_currency")).upper())
 
 
 @router.post("/portfolio/reset-roi")
 def reset_roi_endpoint(db: Session = Depends(get_db)):
     portfolio = reset_roi(db)
-    return portfolio.to_dict()
+    return portfolio.to_dict(quote_currency=str(get_setting(db, "quote_currency")).upper())
 
 
 # ---------------------------------------------------------------------------
@@ -237,10 +238,11 @@ async def kraken_test_connection(db: Session = Depends(get_db)):
     if not api_key or not api_secret:
         raise HTTPException(status_code=400, detail="Kraken API credentials not configured")
     try:
-        balances = await kraken_service.get_balances(api_key, api_secret)
+        quote_currency = str(get_setting(db, "quote_currency")).upper()
+        balances = await kraken_service.get_balances(api_key, api_secret, quote_currency)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc))
-    return {"ok": True, "usd": balances["usd"], "xrp": balances["xrp"]}
+    return {"ok": True, "usd": balances["usd"], "quote_currency": balances["quote_currency"], "xrp": balances["xrp"]}
 
 
 @router.post("/kraken/sync-balance")
@@ -251,14 +253,13 @@ async def kraken_sync_balance(db: Session = Depends(get_db)):
     from app.services.trading_service import get_portfolio
     from datetime import datetime
 
-    if get_setting(db, "trading_mode") != "live":
-        raise HTTPException(status_code=400, detail="Not in live trading mode")
     api_key    = get_setting(db, "kraken_api_key")
     api_secret = get_setting(db, "kraken_api_secret")
     if not api_key or not api_secret:
         raise HTTPException(status_code=400, detail="Kraken API credentials not configured")
     try:
-        balances = await kraken_service.get_balances(api_key, api_secret)
+        quote_currency = str(get_setting(db, "quote_currency")).upper()
+        balances = await kraken_service.get_balances(api_key, api_secret, quote_currency)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc))
     portfolio = get_portfolio(db)
@@ -266,4 +267,4 @@ async def kraken_sync_balance(db: Session = Depends(get_db)):
     portfolio.xrp_balance = balances["xrp"]
     portfolio.updated_at  = datetime.utcnow()
     db.commit()
-    return {"ok": True, "usd": balances["usd"], "xrp": balances["xrp"]}
+    return {"ok": True, "usd": balances["usd"], "quote_currency": balances["quote_currency"], "xrp": balances["xrp"]}

@@ -4,6 +4,7 @@ import { usePortfolioStore } from '@/stores/portfolio'
 import { useSettingsStore } from '@/stores/settings'
 import { computed, onMounted } from 'vue'
 import NumberTicker from './NumberTicker.vue'
+import { currencySymbol, currencyCode } from '@/utils/format'
 
 const priceStore = usePriceStore()
 const portfolioStore = usePortfolioStore()
@@ -12,6 +13,8 @@ const settingsStore = useSettingsStore()
 onMounted(() => portfolioStore.fetchPortfolio())
 
 const isLiveMode = computed(() => settingsStore.settings['trading_mode'] === 'live')
+const quoteCurrency = computed(() => currencyCode(settingsStore.settings['quote_currency'], portfolioStore.portfolio?.quote_currency))
+const quoteSymbol = computed(() => currencySymbol(quoteCurrency.value))
 
 const priceColor = computed(() =>
   (priceStore.change24h ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'
@@ -19,7 +22,7 @@ const priceColor = computed(() =>
 const changeSign = computed(() => (priceStore.change24h ?? 0) >= 0 ? '+' : '')
 
 const formattedPrice = computed(() =>
-  priceStore.current ? '$' + priceStore.current.price.toFixed(6) : ''
+  priceStore.current ? quoteSymbol.value + priceStore.current.price.toFixed(6) : ''
 )
 const formattedChange = computed(() =>
   priceStore.change24h !== null
@@ -29,7 +32,7 @@ const formattedChange = computed(() =>
 const formattedPortfolio = computed(() => {
   const p = portfolioStore.portfolio
   if (!p) return ''
-  return '$' + (p.total_value_usd ?? p.usd_balance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return quoteSymbol.value + (p.total_value_usd ?? p.usd_balance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 })
 const formattedRoi = computed(() => {
   const p = portfolioStore.portfolio
@@ -69,7 +72,7 @@ const formattedRoi = computed(() => {
 
       <!-- Price ticker -->
       <div class="flex items-center gap-1.5 md:gap-3 min-w-0">
-        <span class="hidden md:inline text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">XRP/USD</span>
+        <span class="hidden md:inline text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">XRP/{{ quoteCurrency }}</span>
         <span class="inline md:hidden text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">XRP</span>
         <div v-if="priceStore.current" class="flex items-baseline gap-1.5 md:gap-2">
           <span class="text-sm md:text-base font-bold text-zinc-100 font-mono tabular-nums">

@@ -25,8 +25,26 @@ DIA_URL = (
 )
 COINGECKO_URL = (
     "https://api.coingecko.com/api/v3/coins/ripple/market_chart"
-    "?vs_currency=usd&days={days}&interval=daily"
+    "?vs_currency={currency}&days={days}&interval=daily"
 )
+COINGECKO_SIMPLE_URL = (
+    "https://api.coingecko.com/api/v3/simple/price"
+    "?ids=ripple&vs_currencies={currency}"
+)
+
+
+def _quote_currency(db: Session) -> str:
+    return str(get_setting(db, "quote_currency")).upper()
+
+
+def _kraken_pair_for_quote(db: Session) -> str:
+    quote = _quote_currency(db)
+    pair = str(get_setting(db, "kraken_pair")).upper().strip()
+    if quote == "GBP" and pair in {"", "XXRPZUSD", "XRPUSD"}:
+        return "XXRPZGBP"
+    if quote == "USD" and pair in {"", "XXRPZGBP", "XRPGBP"}:
+        return "XXRPZUSD"
+    return pair
 
 
 async def fetch_and_store_price() -> Optional[PricePoint]:
@@ -34,11 +52,14 @@ async def fetch_and_store_price() -> Optional[PricePoint]:
     db: Session = SessionLocal()
     try:
         mode = get_setting(db, "trading_mode")
+        quote = _quote_currency(db)
     finally:
         db.close()
 
     if mode == "live":
         return await _fetch_from_kraken()
+    if quote != "USD":
+        return await _fetch_from_coingecko_current(quote.lower())
     return await _fetch_from_dia()
 
 
@@ -50,7 +71,7 @@ async def _fetch_from_kraken() -> Optional[PricePoint]:
 
         db: Session = _SL()
         try:
-            pair = get_setting(db, "kraken_pair")
+            pair = _kraken_pair_for_quote(db)
         finally:
             db.close()
 
@@ -84,6 +105,37 @@ async def _fetch_from_kraken() -> Optional[PricePoint]:
             db.close()
     except Exception as exc:
         logger.warning("Kraken price fetch failed: %s", exc)
+        return None
+
+
+async def _fetch_from_coingecko_current(currency: str) -> Optional[PricePoint]:
+    """Fetch current XRP price from CoinGecko for non-USD paper-mode quotes."""
+    try:
+        url = COINGECKO_SIMPLE_URL.format(currency=currency)
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(url)
+            resp.raise_for_status()
+            data = resp.json()
+
+        price = float(data["ripple"][currency])
+        point = PricePoint(
+            timestamp=datetime.utcnow(),
+            price=price,
+            price_yesterday=0.0,
+            volume_usd=0.0,
+        )
+
+        db: Session = SessionLocal()
+        try:
+            db.add(point)
+            db.commit()
+            db.refresh(point)
+            await ws_manager.broadcast("price", point.to_dict())
+            return point
+        finally:
+            db.close()
+    except Exception as exc:
+        logger.warning("CoinGecko current price fetch failed: %s", exc)
         return None
 
 
@@ -162,7 +214,13 @@ async def seed_from_coingecko(days: int = 30) -> int:
     Returns number of rows inserted.
     """
     try:
-        url = COINGECKO_URL.format(days=days)
+        db: Session = SessionLocal()
+        try:
+            currency = _quote_currency(db).lower()
+        finally:
+            db.close()
+
+        url = COINGECKO_URL.format(days=days, currency=currency)
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.get(url)
             resp.raise_for_status()

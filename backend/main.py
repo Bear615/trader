@@ -44,7 +44,8 @@ async def _kraken_balance_sync_job():
         if not api_key or not api_secret:
             return
 
-        balances  = await get_balances(api_key, api_secret)
+        quote_currency = str(get_setting(db, "quote_currency")).upper()
+        balances  = await get_balances(api_key, api_secret, quote_currency)
         portfolio = get_portfolio(db)
         portfolio.usd_balance = balances["usd"]
         portfolio.xrp_balance = balances["xrp"]

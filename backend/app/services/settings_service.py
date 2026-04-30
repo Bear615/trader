@@ -23,6 +23,7 @@ SECRET_SETTING_KEYS = {
 # ---------------------------------------------------------------------------
 DEFAULTS: dict[str, tuple[Any, str]] = {
     # --- Exchange & Data ---
+    "quote_currency":                   ("USD", "Quote currency for balances and XRP prices. Options: USD or GBP"),
     "poll_interval_seconds":            (10,    "How often to fetch a new XRP price from DIA (seconds, min 5)"),
     "price_history_retention_days":     (30,    "How many days of price history to keep in the database"),
 
@@ -75,7 +76,7 @@ DEFAULTS: dict[str, tuple[Any, str]] = {
     "trading_mode":                         ("paper", "Trading mode: 'paper' for simulated trading, 'live' for real Kraken orders"),
     "kraken_api_key":                       ("",    "Kraken API key (required for live trading mode)"),
     "kraken_api_secret":                    ("",    "Kraken API secret (required for live trading mode)"),
-    "kraken_pair":                          ("XXRPZUSD", "Kraken trading pair symbol (e.g. XXRPZUSD)"),
+    "kraken_pair":                          ("XXRPZUSD", "Kraken trading pair symbol (e.g. XXRPZUSD or XXRPZGBP)"),
     "kraken_order_type":                    ("market", "Order type for Kraken trades: 'market' or 'limit'"),
     "kraken_balance_sync_interval_minutes": (20,   "How often (minutes) to reconcile local portfolio balances with Kraken in live mode"),
 

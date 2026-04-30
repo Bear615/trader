@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { PricePoint } from '@/api/types'
+import { currencySymbol } from '@/utils/format'
 
 const props = defineProps<{
   data: PricePoint[]
   loading?: boolean
+  quoteCurrency?: string
 }>()
 
 // Palette constants — kept in sync with tailwind.config.js
@@ -49,7 +51,7 @@ const chartOptions = computed(() => ({
   yaxis: {
     labels: {
       style: { colors: THEME.label, fontSize: '11px' },
-      formatter: (v: number) => '$' + v.toFixed(4),
+      formatter: (v: number) => currencySymbol(props.quoteCurrency) + v.toFixed(4),
     },
   },
   grid: {
@@ -59,7 +61,7 @@ const chartOptions = computed(() => ({
   },
   tooltip: {
     x: { format: 'dd MMM HH:mm:ss' },
-    y: { formatter: (v: number) => '$' + v.toFixed(6) },
+    y: { formatter: (v: number) => currencySymbol(props.quoteCurrency) + v.toFixed(6) },
   },
   dataLabels: { enabled: false },
   markers: { size: 0 },
@@ -67,7 +69,7 @@ const chartOptions = computed(() => ({
 
 const series = computed(() => [
   {
-    name: 'XRP/USD',
+    name: `XRP/${props.quoteCurrency ?? 'USD'}`,
     data: props.data.map((p) => [new Date(p.timestamp).getTime(), p.price]),
   },
 ])

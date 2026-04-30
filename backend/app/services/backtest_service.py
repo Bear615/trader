@@ -375,9 +375,11 @@ async def run_backtest(run_id: int, db_factory) -> None:
 def _compute_live_metrics(db: Session, current_price: float) -> dict[str, Any]:
     """Compute live portfolio metrics for the /api/v1/metrics endpoint."""
     from app.services.trading_service import get_portfolio
+    from app.services.settings_service import get_setting
     from app.models.trade import Trade
 
     portfolio = get_portfolio(db)
+    quote_currency = str(get_setting(db, "quote_currency")).upper()
     total_value = portfolio.total_value_usd(current_price)
     roi = ((total_value - portfolio.starting_budget) / portfolio.starting_budget * 100) if portfolio.starting_budget else 0
 
@@ -404,6 +406,7 @@ def _compute_live_metrics(db: Session, current_price: float) -> dict[str, Any]:
 
     return {
         "total_value_usd": total_value,
+        "quote_currency": quote_currency,
         "roi_pct": round(roi, 4),
         "total_trades": len(all_trades),
         "buy_count": len(buy_trades),

@@ -106,11 +106,12 @@ async def get_ticker(pair: str) -> dict:
 # Private / authenticated helpers
 # ---------------------------------------------------------------------------
 
-async def get_balances(api_key: str, api_secret: str) -> dict:
+async def get_balances(api_key: str, api_secret: str, quote_currency: str = "USD") -> dict:
     """
     Fetch account balances.
-    Returns {usd: float, xrp: float}.
-    Kraken labels: ZUSD, XXRP.
+    Returns {usd: float, quote: float, quote_currency: str, xrp: float}.
+    The legacy `usd` key contains the selected quote-currency balance so older
+    portfolio fields can keep working without a database migration.
     """
     result = await _private_post("Balance", {}, api_key, api_secret)
 
@@ -131,10 +132,12 @@ async def get_balances(api_key: str, api_secret: str) -> dict:
                     logger.warning("Ignoring non-numeric Kraken balance for asset %s", asset)
         return total
 
-    # Kraken may label assets as ZUSD, USD, XXRP, XRP, or with suffixes like ZUSD.F.
+    quote = quote_currency.upper()
+
+    # Kraken may label assets as ZUSD, USD, XXRP, XRP, ZGBP, GBP, or suffixed forms like ZUSD.F.
     xrp = total_for("XRP")
-    usd = total_for("USD")
-    return {"usd": usd, "xrp": xrp}
+    quote_balance = total_for(quote)
+    return {"usd": quote_balance, "quote": quote_balance, "quote_currency": quote, "xrp": xrp}
 
 
 async def place_order(
