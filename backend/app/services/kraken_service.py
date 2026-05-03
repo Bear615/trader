@@ -27,6 +27,11 @@ QUOTE_PAIR_ALIASES = {
     "GBP": "XRPGBP",
     "EUR": "XXRPZEUR",
 }
+KNOWN_XRP_PAIRS_BY_QUOTE = {
+    "USD": {"XXRPZUSD", "XRPUSD"},
+    "GBP": {"XRPGBP"},
+    "EUR": {"XXRPZEUR", "XRPEUR"},
+}
 
 
 def pair_quote_currency(pair: str | None) -> str | None:
@@ -45,7 +50,7 @@ def normalize_xrp_pair_for_quote(pair: str | None, quote_currency: str) -> str:
     quote = quote_currency.upper()
     default_pair = QUOTE_PAIR_ALIASES.get(quote, QUOTE_PAIR_ALIASES["USD"])
     compact = str(pair or "").upper().replace("/", "").replace("-", "").strip()
-    if "XRP" in compact and pair_quote_currency(pair) == quote:
+    if compact in KNOWN_XRP_PAIRS_BY_QUOTE.get(quote, set()):
         return compact
     return default_pair
 

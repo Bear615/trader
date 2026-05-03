@@ -43,7 +43,7 @@ def _kraken_pair_for_quote(db: Session) -> str:
 
 
 async def fetch_and_store_price() -> Optional[PricePoint]:
-    """Fetch the current XRP price (Kraken in live mode, DIA otherwise) and persist it."""
+    """Fetch the current XRP price and persist it."""
     db: Session = SessionLocal()
     try:
         mode = get_setting(db, "trading_mode")
@@ -51,10 +51,8 @@ async def fetch_and_store_price() -> Optional[PricePoint]:
     finally:
         db.close()
 
-    if mode == "live":
+    if mode == "live" or quote != "USD":
         return await _fetch_from_kraken()
-    if quote != "USD":
-        return await _fetch_from_coingecko_current(quote.lower())
     return await _fetch_from_dia()
 
 
