@@ -27,7 +27,7 @@ function isActive(path: string) {
 </script>
 
 <template>
-  <aside class="relative z-20 w-[264px] flex-shrink-0 flex-col border-r border-slate-700/45 bg-[#050a12]/88 px-4 py-6 shadow-2xl shadow-black/30 backdrop-blur-xl">
+  <aside class="relative z-20 w-[264px] flex-shrink-0 flex-col border-r border-slate-800/75 bg-[#01040a]/92 px-4 py-6 shadow-2xl shadow-black/40 backdrop-blur-xl">
     <div class="flex items-center gap-3 px-1">
       <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-[11px] font-black text-slate-950 shadow-lg shadow-amber-500/15">
         XRP
@@ -43,7 +43,7 @@ function isActive(path: string) {
         v-for="item in nav"
         :key="item.to"
         :to="item.to"
-        class="group flex items-center gap-3 rounded-xl border px-4 py-3 text-base transition"
+        class="liquid-nav-item group flex items-center gap-3 rounded-xl border px-4 py-3 text-base"
         :class="isActive(item.to)
           ? 'border-slate-500/45 bg-gradient-to-r from-slate-700/45 to-slate-800/20 text-slate-50 shadow-lg shadow-black/20'
           : 'border-transparent text-slate-400 hover:border-slate-700/55 hover:bg-slate-900/45 hover:text-slate-100'"
@@ -59,10 +59,6 @@ function isActive(path: string) {
           <path stroke-linecap="round" stroke-linejoin="round" :d="item.icon" />
         </svg>
         <span class="truncate">{{ item.name }}</span>
-        <span
-          v-if="item.name === 'Admin' && settingsStore.isAdmin"
-          class="ml-auto rounded-full border border-amber-400/25 bg-amber-400/10 px-2 py-0.5 text-[10px] font-bold text-amber-300"
-        >ON</span>
       </RouterLink>
     </nav>
 

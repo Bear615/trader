@@ -24,7 +24,7 @@ const marketStatus = computed(() => priceStore.connected ? 'Market Open' : 'Feed
 </script>
 
 <template>
-  <header class="flex min-h-[73px] flex-shrink-0 items-center border-b border-slate-700/50 bg-[#050a12]/70 px-5 backdrop-blur-xl md:px-8">
+  <header class="flex min-h-[73px] flex-shrink-0 items-center border-b border-slate-800/70 bg-[#01040a]/82 px-5 backdrop-blur-xl md:px-8">
     <div class="flex w-full items-center justify-between gap-4">
       <div class="flex min-w-0 items-center gap-5 text-sm md:text-base">
         <div class="font-semibold text-slate-300">XRP/{{ quoteCurrency }}</div>

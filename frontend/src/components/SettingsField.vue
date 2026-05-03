@@ -119,16 +119,16 @@ const statusColor = computed(() => {
           @click="handleToggle"
           :class="[
             'toggle-track',
-            local ? 'bg-sky-600' : 'bg-surface-600'
+            local ? 'toggle-track-on' : 'toggle-track-off'
           ]"
           role="switch"
           :aria-checked="local ? 'true' : 'false'"
         >
           <span
-            :class="['toggle-thumb', local ? 'translate-x-5' : 'translate-x-0']"
+            :class="['toggle-thumb', local ? 'translate-x-6' : 'translate-x-0']"
           />
         </button>
-        <span :class="['text-xs font-medium', local ? 'text-sky-400' : 'text-gray-500']">
+        <span :class="['text-xs font-semibold tracking-wide', local ? 'text-blue-300' : 'text-slate-600']">
           {{ local ? 'ON' : 'OFF' }}
         </span>
       </template>

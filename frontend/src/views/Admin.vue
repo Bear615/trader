@@ -456,12 +456,14 @@ async function clearTrades() {
               <button
                 @click="requestModeToggle"
                 :disabled="saveStatus['trading_mode'] === 'saving'"
-                class="relative inline-flex h-7 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-200 ease-in-out focus:outline-none"
-                :class="isLiveMode ? 'bg-red-500 border-red-500' : 'border-white/20'" :style="isLiveMode ? '' : 'background: rgba(255,255,255,0.1);'"
+                class="toggle-track"
+                :class="isLiveMode ? 'toggle-track-danger' : 'toggle-track-off'"
+                role="switch"
+                :aria-checked="isLiveMode ? 'true' : 'false'"
               >
                 <span
-                  class="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition duration-200 ease-in-out mt-px"
-                  :class="isLiveMode ? 'translate-x-7' : 'translate-x-0.5'"
+                  class="toggle-thumb pointer-events-none"
+                  :class="isLiveMode ? 'translate-x-6' : 'translate-x-0'"
                 />
               </button>
             </div>
