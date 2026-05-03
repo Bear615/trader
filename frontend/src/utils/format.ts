@@ -9,7 +9,7 @@ export function formatDate(iso: string): string {
 }
 
 export function currencySymbol(currency?: string): string {
-  return currency?.toUpperCase() === 'GBP' ? '£' : '$'
+  return currency?.toUpperCase() === 'GBP' ? '\u00a3' : '$'
 }
 
 export function currencyCode(settingsCurrency: unknown, fallback?: string): string {

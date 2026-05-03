@@ -43,12 +43,12 @@ const totalTokens = computed(() =>
 
 <template>
   <!-- Full-height split-pane layout (fills the padded main area) -->
-  <div class="flex flex-col h-[calc(100vh-7rem)] min-h-[400px]">
+  <div class="view-shell flex h-[calc(100vh-9rem)] min-h-[520px] flex-col">
     <!-- Page header -->
     <div class="flex items-center gap-4 pb-4 flex-shrink-0">
       <div>
-        <h1 class="text-xl font-semibold text-gray-100">AI I/O Monitor</h1>
-        <p class="text-xs text-gray-500 mt-0.5">Live feed of every prompt sent to the model and its raw response</p>
+        <h1 class="view-title">AI Monitor</h1>
+        <p class="view-subtitle">Live feed of every prompt sent to the model and its raw response.</p>
       </div>
       <div class="ml-auto flex items-center gap-2 text-xs text-gray-500">
         <span class="relative flex h-2 w-2">

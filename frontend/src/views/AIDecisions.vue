@@ -52,13 +52,13 @@ async function trigger() {
 </script>
 
 <template>
-  <div class="space-y-6 max-w-[960px]">
+  <div class="view-shell">
 
     <!-- ── Header ── -->
     <div class="flex items-start justify-between gap-4">
       <div>
-        <h1 class="text-xl font-semibold text-gray-100">AI Decisions</h1>
-        <p class="text-sm text-gray-500 mt-1">
+        <h1 class="view-title">AI Decisions</h1>
+        <p class="view-subtitle">
           {{ store.total.toLocaleString() }} total decisions logged
         </p>
       </div>

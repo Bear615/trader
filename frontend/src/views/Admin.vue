@@ -57,7 +57,7 @@ const isLiveMode = computed(() => settingsStore.settings['trading_mode'] === 'li
 const quoteCurrency = computed(() => String(settingsStore.settings['quote_currency'] || 'USD').toUpperCase())
 const quoteSymbol = computed(() => currencySymbol(quoteCurrency.value))
 const livePrice = computed(() =>
-  priceStore.current ? `${quoteSymbol.value}${priceStore.current.price.toFixed(6)}` : '—'
+  priceStore.current ? `${quoteSymbol.value}${priceStore.current.price.toFixed(6)}` : '-'
 )
 
 onMounted(async () => {
@@ -155,7 +155,7 @@ async function syncKrakenBalance() {
     const res = await api.post('/admin/kraken/sync-balance')
     const syncedCurrency = res.data.quote_currency ?? quoteCurrency.value
     const syncedSymbol = currencySymbol(syncedCurrency)
-    successMsg.value = `Balances synced — ${syncedCurrency}: ${syncedSymbol}${res.data.usd.toFixed(2)}, XRP: ${res.data.xrp.toFixed(6)}`
+    successMsg.value = `Balances synced - ${syncedCurrency}: ${syncedSymbol}${res.data.usd.toFixed(2)}, XRP: ${res.data.xrp.toFixed(6)}`
     await Promise.all([portfolioStore.fetchPortfolio(), portfolioStore.fetchMetrics()])
     setTimeout(() => { successMsg.value = '' }, 5000)
   } catch (e: unknown) {
@@ -212,6 +212,20 @@ const groups = computed(() => [
 
 const openGroup = ref<string | null>('portfolio')
 
+const groupDescriptions: Record<string, string> = {
+  data: 'Configure exchange connections and market data settings',
+  portfolio: 'Configure portfolio and trading fee parameters',
+  ai: 'Configure AI model behavior and decision parameters',
+  ai_provider: 'Select and manage AI service provider',
+  risk: 'Set risk controls and position limits',
+  notifications: 'Manage alert channels and preferences',
+  display: 'Customize appearance and data presentation',
+}
+
+function groupDescription(id: string) {
+  return groupDescriptions[id] ?? ''
+}
+
 // Danger zone actions
 async function doAction(key: string, fn: () => Promise<void>) {
   dangerLoading.value[key] = true
@@ -250,7 +264,7 @@ async function clearTrades() {
 </script>
 
 <template>
-  <div class="space-y-6 max-w-[900px]">
+  <div class="view-shell">
     <!-- Login gate -->
     <div v-if="!settingsStore.isAdmin" class="flex justify-center mt-12 animate-scale-in">
       <div class="w-full max-w-xs">
@@ -292,7 +306,7 @@ async function clearTrades() {
           <!-- Status messages -->
           <div class="h-4 -mt-3 text-center">
             <p v-if="loginError" :class="loginLocked ? 'text-xs text-amber-400' : 'text-xs text-rose-400'">{{ loginError }}</p>
-            <p v-else-if="loginLocked" class="text-xs text-amber-500">Locked. Please wait…</p>
+            <p v-else-if="loginLocked" class="text-xs text-amber-500">Locked. Please wait...</p>
           </div>
 
           <!-- Numpad -->
@@ -324,10 +338,10 @@ async function clearTrades() {
 
     <!-- Admin panel content -->
     <template v-else>
-      <div class="flex items-center justify-between">
+      <div class="view-header">
         <div>
-          <h1 class="text-xl font-semibold text-gray-100">Admin Panel</h1>
-          <p class="text-sm text-gray-500 mt-0.5">All settings, controls, and danger zone</p>
+          <h1 class="view-title">Admin</h1>
+          <p class="view-subtitle">Manage settings, controls, and system configuration.</p>
         </div>
         <button @click="logout" class="btn btn-ghost btn-sm text-gray-500">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -342,12 +356,12 @@ async function clearTrades() {
         <div
           v-for="group in groups"
           :key="group.id"
-          class="rounded-xl overflow-hidden" style="background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%); border: 1px solid rgba(255,255,255,0.09); backdrop-filter: blur(16px);"
+          class="panel overflow-hidden p-0"
         >
           <!-- Accordion header -->
           <button
             @click="openGroup = openGroup === group.id ? null : group.id"
-            class="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/[0.04] transition-colors"
+            class="w-full flex items-center justify-between gap-4 px-5 py-5 text-left transition hover:bg-slate-800/30"
           >
             <div class="flex items-center gap-3">
               <div class="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center">
@@ -355,7 +369,10 @@ async function clearTrades() {
                   <path stroke-linecap="round" stroke-linejoin="round" :d="group.icon" />
                 </svg>
               </div>
-              <span class="text-sm font-semibold text-gray-200">{{ group.label }}</span>
+              <div class="flex flex-col gap-1 md:flex-row md:items-center md:gap-6">
+                <span class="text-base font-semibold text-slate-100">{{ group.label }}</span>
+                <span class="text-sm text-slate-500">{{ groupDescription(group.id) }}</span>
+              </div>
             </div>
             <svg
               class="w-4 h-4 text-gray-500 transition-transform duration-200"
@@ -367,7 +384,7 @@ async function clearTrades() {
           </button>
 
           <!-- Settings fields -->
-          <div v-show="openGroup === group.id" class="px-5 pb-5 space-y-4" style="border-top: 1px solid rgba(255,255,255,0.07);">
+          <div v-show="openGroup === group.id" class="border-t border-slate-700/50 px-5 pb-5 pt-1">
             <SettingsField
               v-for="key in group.keys"
               :key="key"
@@ -381,11 +398,11 @@ async function clearTrades() {
         </div>
 
         <!-- Live Trading Mode accordion (amber, always last) -->
-        <div class="rounded-xl border overflow-hidden"
-          :style="isLiveMode ? 'background: rgba(120,53,15,0.18); border-color: rgba(245,158,11,0.45);' : 'background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%); border-color: rgba(255,255,255,0.09); backdrop-filter: blur(16px);'">
+        <div class="panel overflow-hidden p-0"
+          :class="isLiveMode ? 'border-amber-400/45 bg-amber-500/10' : ''">
           <button
             @click="openGroup = openGroup === 'live' ? null : 'live'"
-            class="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-amber-500/5 transition-colors"
+            class="w-full flex items-center justify-between gap-4 px-5 py-5 text-left transition hover:bg-amber-500/5"
           >
             <div class="flex items-center gap-3">
               <div class="w-8 h-8 rounded-lg flex items-center justify-center"
@@ -394,8 +411,9 @@ async function clearTrades() {
                   <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               </div>
-              <div class="flex items-center gap-2">
-                <span class="text-sm font-semibold text-gray-200">Live Trading Mode</span>
+              <div class="flex flex-col gap-1 md:flex-row md:items-center md:gap-6">
+                <span class="text-base font-semibold text-slate-100">Live Trading Mode</span>
+                <span class="text-sm text-slate-500">Enable or disable live trading execution</span>
                 <span v-if="isLiveMode" class="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/20 border border-red-500/40 text-xs font-bold text-red-400">
                   <span class="relative flex h-1.5 w-1.5">
                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
@@ -415,8 +433,7 @@ async function clearTrades() {
             </svg>
           </button>
 
-          <div v-show="openGroup === 'live'" class="px-5 pb-5 space-y-5 border-t"
-            :style="isLiveMode ? 'border-color: rgba(245,158,11,0.28);' : 'border-color: rgba(255,255,255,0.07);'">
+          <div v-show="openGroup === 'live'" class="space-y-5 border-t border-slate-700/50 px-5 pb-5 pt-5">
 
             <!-- Warning banner -->
             <div class="flex items-start gap-3 rounded-lg bg-amber-500/10 border border-amber-500/25 px-4 py-3 mt-4">
@@ -514,7 +531,7 @@ async function clearTrades() {
             <div v-if="krakenTestResult !== null" class="rounded-lg px-3 py-2 text-xs font-mono"
               :class="krakenTestResult.ok ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-300' : 'bg-rose-500/10 border border-rose-500/20 text-rose-300'">
               <template v-if="krakenTestResult.ok">
-                Connected — {{ krakenTestResult.quote_currency ?? quoteCurrency }}: {{ currencySymbol(krakenTestResult.quote_currency ?? quoteCurrency) }}{{ krakenTestResult.usd?.toFixed(2) }}, XRP: {{ krakenTestResult.xrp?.toFixed(6) }}
+                Connected - {{ krakenTestResult.quote_currency ?? quoteCurrency }}: {{ currencySymbol(krakenTestResult.quote_currency ?? quoteCurrency) }}{{ krakenTestResult.usd?.toFixed(2) }}, XRP: {{ krakenTestResult.xrp?.toFixed(6) }}
               </template>
               <template v-else>
                 {{ krakenTestResult.error }}
@@ -525,12 +542,13 @@ async function clearTrades() {
       </div>
 
       <!-- Danger Zone -->
-      <div class="rounded-2xl border border-rose-900/50 p-5 space-y-4" style="background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,0,0,0.02) 100%); backdrop-filter: blur(16px);">
-        <div class="flex items-center gap-2 pb-3" style="border-bottom: 1px solid rgba(255,255,255,0.07);">
+      <div class="panel space-y-4 border-rose-500/35 p-5">
+        <div class="flex items-center gap-3 border-b border-slate-700/50 pb-4">
           <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.07 16.5c-.77.833.192 2.5 1.732 2.5z" />
           </svg>
-          <h2 class="text-sm font-semibold text-rose-400">Danger Zone</h2>
+          <h2 class="text-base font-semibold text-rose-300">Danger Zone</h2>
+          <p class="text-sm text-slate-500">Irreversible actions that affect your data and portfolio</p>
         </div>
 
         <div v-if="successMsg" class="text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded px-3 py-2">
@@ -540,7 +558,7 @@ async function clearTrades() {
           {{ errorMsg }}
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div class="card-sm space-y-2">
             <div class="text-sm font-medium text-gray-300">Seed Price History</div>
             <p class="text-xs text-gray-500">Fetch 30 days of XRP price data from CoinGecko for backtesting.</p>
@@ -617,7 +635,7 @@ async function clearTrades() {
         <div class="flex gap-3 pt-1">
           <button @click="showLiveConfirmModal = false" class="btn btn-ghost flex-1">Cancel</button>
           <button @click="confirmGoLive" class="flex-1 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-sm font-semibold transition-colors">
-            I understand — Go Live
+            I understand - Go Live
           </button>
         </div>
       </div>

@@ -53,12 +53,11 @@ async function submit(pinValue: string) {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden" style="background: #09090b;">
+  <div class="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden" style="background: #050a12;">
     <!-- Background layers -->
     <div class="absolute inset-0 pointer-events-none" aria-hidden="true">
-      <div class="absolute inset-0" style="background-image: radial-gradient(circle, #27272a 1px, transparent 1px); background-size: 28px 28px; opacity: 0.45;" />
-      <div class="absolute" style="top: 30%; left: 50%; transform: translate(-50%, -50%); width: 480px; height: 480px; border-radius: 50%; background: radial-gradient(circle, rgba(245,158,11,0.10) 0%, transparent 70%); filter: blur(48px);" />
-      <div class="absolute" style="bottom: 10%; right: 10%; width: 320px; height: 320px; border-radius: 50%; background: radial-gradient(circle, rgba(56,189,248,0.06) 0%, transparent 70%); filter: blur(64px);" />
+      <div class="absolute" style="top: 25%; left: 52%; transform: translate(-50%, -50%); width: 520px; height: 520px; border-radius: 50%; background: radial-gradient(circle, rgba(59,130,246,0.14) 0%, transparent 70%); filter: blur(54px);" />
+      <div class="absolute" style="bottom: 10%; right: 10%; width: 340px; height: 340px; border-radius: 50%; background: radial-gradient(circle, rgba(251,191,36,0.08) 0%, transparent 70%); filter: blur(64px);" />
     </div>
 
     <!-- Card -->
@@ -94,7 +93,7 @@ async function submit(pinValue: string) {
         <!-- Status messages -->
         <div class="h-4 -mt-3 text-center">
           <p v-if="error" class="text-xs text-rose-400">{{ error }}</p>
-          <p v-else-if="locked" class="text-xs text-amber-500">Locked. Please wait…</p>
+          <p v-else-if="locked" class="text-xs text-amber-500">Locked. Please wait...</p>
           <div v-else-if="loading" class="flex justify-center">
             <div class="w-4 h-4 border border-amber-400 border-t-transparent rounded-full animate-spin" />
           </div>

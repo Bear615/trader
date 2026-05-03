@@ -1,8 +1,8 @@
 <script setup lang="ts">
+import { computed, onMounted } from 'vue'
 import { usePriceStore } from '@/stores/price'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { useSettingsStore } from '@/stores/settings'
-import { computed, onMounted } from 'vue'
 import NumberTicker from './NumberTicker.vue'
 import { currencySymbol, currencyCode } from '@/utils/format'
 
@@ -16,92 +16,31 @@ const isLiveMode = computed(() => settingsStore.settings['trading_mode'] === 'li
 const quoteCurrency = computed(() => currencyCode(settingsStore.settings['quote_currency'], portfolioStore.portfolio?.quote_currency))
 const quoteSymbol = computed(() => currencySymbol(quoteCurrency.value))
 
-const priceColor = computed(() =>
-  (priceStore.change24h ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'
-)
-const changeSign = computed(() => (priceStore.change24h ?? 0) >= 0 ? '+' : '')
-
 const formattedPrice = computed(() =>
-  priceStore.current ? quoteSymbol.value + priceStore.current.price.toFixed(6) : ''
+  priceStore.current ? quoteSymbol.value + priceStore.current.price.toFixed(6) : 'Waiting for price'
 )
-const formattedChange = computed(() =>
-  priceStore.change24h !== null
-    ? changeSign.value + priceStore.change24h.toFixed(2) + '%'
-    : ''
-)
-const formattedPortfolio = computed(() => {
-  const p = portfolioStore.portfolio
-  if (!p) return ''
-  return quoteSymbol.value + (p.xrp_value_quote ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-})
-const formattedRoi = computed(() => {
-  const p = portfolioStore.portfolio
-  if (!p || p.roi_pct === null) return ''
-  return ((p.roi_pct ?? 0) >= 0 ? '+' : '') + p.roi_pct?.toFixed(2) + '% ROI'
-})
+
+const marketStatus = computed(() => priceStore.connected ? 'Market Open' : 'Feed Offline')
 </script>
 
 <template>
-  <header class="h-12 md:h-14 flex items-center justify-between px-3 md:px-6 bg-surface-950/80 backdrop-blur-xl border-b border-surface-800 flex-shrink-0 sticky top-0 z-30">
-    <!-- Left: connection status + mode badge + price -->
-    <div class="flex items-center gap-2 md:gap-4 min-w-0">
-      <!-- WS status dot -->
-      <div class="flex items-center gap-1.5">
-        <span class="relative flex h-1.5 w-1.5">
-          <span v-if="priceStore.connected" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-          <span class="relative inline-flex rounded-full h-1.5 w-1.5" :class="priceStore.connected ? 'bg-amber-400' : 'bg-zinc-600'" />
-        </span>
-        <span class="hidden sm:inline text-[11px] font-semibold" :class="priceStore.connected ? 'text-amber-400' : 'text-zinc-600'">
-          {{ priceStore.connected ? 'LIVE' : 'OFFLINE' }}
-        </span>
-      </div>
-
-      <!-- Trading mode badge -->
-      <div v-if="isLiveMode" class="flex items-center gap-1.5 px-1.5 md:px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/25">
-        <span class="relative flex h-1.5 w-1.5">
-          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-          <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-rose-400" />
-        </span>
-        <span class="text-[11px] font-bold text-rose-400 tracking-wide">LIVE</span>
-      </div>
-      <div v-else class="px-1.5 md:px-2 py-0.5 rounded bg-surface-800 border border-surface-700">
-        <span class="text-[11px] font-semibold text-zinc-500 tracking-wide">PAPER</span>
-      </div>
-
-      <div class="hidden sm:block w-px h-4 bg-surface-700" />
-
-      <!-- Price ticker -->
-      <div class="flex items-center gap-1.5 md:gap-3 min-w-0">
-        <span class="hidden md:inline text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">XRP/{{ quoteCurrency }}</span>
-        <span class="inline md:hidden text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">XRP</span>
-        <div v-if="priceStore.current" class="flex items-baseline gap-1.5 md:gap-2">
-          <span class="text-sm md:text-base font-bold text-zinc-100 font-mono tabular-nums">
-            <NumberTicker :value="formattedPrice" />
-          </span>
-          <span v-if="priceStore.change24h !== null" :class="['text-xs font-semibold font-mono transition-colors', priceColor]">
-            <NumberTicker :value="formattedChange" />
-          </span>
+  <header class="flex min-h-[73px] flex-shrink-0 items-center border-b border-slate-700/50 bg-[#050a12]/70 px-5 backdrop-blur-xl md:px-8">
+    <div class="flex w-full items-center justify-between gap-4">
+      <div class="flex min-w-0 items-center gap-5 text-sm md:text-base">
+        <div class="font-semibold text-slate-300">XRP/{{ quoteCurrency }}</div>
+        <div class="h-7 w-px bg-slate-700/70" />
+        <div class="flex items-center gap-2 font-bold text-amber-300">
+          <span class="h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.7)]" />
+          {{ isLiveMode ? 'LIVE' : 'PAPER' }}
         </div>
-        <div v-else class="text-sm text-zinc-600 italic">…</div>
+        <div class="truncate text-lg font-bold tracking-[-0.02em] text-slate-50 md:text-xl">
+          <NumberTicker :value="formattedPrice" />
+        </div>
       </div>
-    </div>
 
-    <!-- Right: portfolio -->
-    <div v-if="portfolioStore.portfolio" class="flex items-center gap-2 md:gap-3 flex-shrink-0">
-      <span class="hidden sm:inline text-xs text-zinc-500">XRP Value</span>
-      <span class="text-xs md:text-sm font-semibold font-mono text-zinc-100 tabular-nums">
-        <NumberTicker :value="formattedPortfolio" />
-      </span>
-      <div
-        v-if="portfolioStore.portfolio?.roi_pct !== null && portfolioStore.portfolio !== null"
-        :class="[
-          'px-1.5 md:px-2 py-0.5 rounded-sm text-xs font-semibold font-mono tabular-nums border',
-          (portfolioStore.portfolio?.roi_pct ?? 0) >= 0
-            ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
-            : 'text-rose-400 bg-rose-500/10 border-rose-500/20'
-        ]"
-      >
-        <NumberTicker :value="formattedRoi" />
+      <div class="status-pill hidden sm:inline-flex">
+        <span class="status-dot" :class="priceStore.connected ? 'bg-emerald-400' : 'bg-rose-400'" />
+        {{ marketStatus }}
       </div>
     </div>
   </header>

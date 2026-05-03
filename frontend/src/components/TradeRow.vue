@@ -13,19 +13,22 @@ const quoteSymbol = computed(() => currencySymbol(quoteCurrency.value))
 </script>
 
 <template>
-  <div class="flex items-center justify-between py-2.5 px-3 rounded-lg bg-surface-900 border border-surface-700 hover:border-surface-600 hover:-translate-y-px hover:shadow-lg hover:shadow-black/30 transition-all duration-150">
-    <div class="flex items-center gap-3 min-w-0">
+  <div class="flex items-center justify-between gap-4 rounded-xl border border-slate-700/45 bg-slate-950/25 px-4 py-3 transition hover:border-slate-500/50 hover:bg-slate-900/45">
+    <div class="flex min-w-0 items-center gap-4">
       <span :class="isBuy ? 'badge-buy' : 'badge-sell'">{{ trade.action }}</span>
       <div class="min-w-0">
-        <div class="text-sm font-medium text-gray-200 font-mono tabular-nums">
+        <div class="font-mono text-sm font-semibold tabular-nums text-slate-100">
           {{ trade.xrp_amount.toFixed(4) }} XRP
         </div>
-        <div class="text-xs text-gray-500 font-mono">@ {{ quoteSymbol }}{{ trade.price_at_trade.toFixed(6) }}</div>
+        <div class="mt-0.5 font-mono text-xs tabular-nums text-slate-500">
+          @ {{ quoteSymbol }}{{ trade.price_at_trade.toFixed(6) }}
+        </div>
       </div>
     </div>
-    <div class="text-right flex-shrink-0">
-      <div class="text-sm font-mono text-gray-300 tabular-nums">{{ quoteSymbol }}{{ trade.usd_amount.toFixed(2) }}</div>
-      <div class="text-xs text-gray-600">{{ formatDate(trade.timestamp) }}</div>
+
+    <div class="flex-shrink-0 text-right">
+      <div class="font-mono text-sm font-semibold tabular-nums text-slate-100">{{ quoteSymbol }}{{ trade.usd_amount.toFixed(2) }}</div>
+      <div class="mt-0.5 text-xs text-slate-500">{{ formatDate(trade.timestamp) }}</div>
     </div>
   </div>
 </template>

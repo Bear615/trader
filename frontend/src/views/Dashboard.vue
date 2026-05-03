@@ -39,146 +39,169 @@ const p = computed(() => portfolioStore.portfolio)
 const m = computed(() => portfolioStore.metrics)
 const quoteCurrency = computed(() => currencyCode(m.value?.quote_currency, p.value?.quote_currency))
 const quoteSymbol = computed(() => currencySymbol(quoteCurrency.value))
+const currentPair = computed(() => `XRP / ${quoteCurrency.value}`)
 
-const portfolioValue = computed(() => {
-  const v = p.value?.xrp_value_quote ?? 0
-  return v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-})
+function formatQuote(value: number | null | undefined, decimals = 2) {
+  if (value === null || value === undefined || Number.isNaN(value)) return '-'
+  return quoteSymbol.value + value.toLocaleString('en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  })
+}
 
-const roiPct = computed(() => m.value?.roi_pct ?? null)
-const roiPositive = computed(() => (roiPct.value ?? 0) >= 0)
-const roiLabel = computed(() =>
-  roiPct.value !== null ? (roiPositive.value ? '+' : '') + roiPct.value.toFixed(2) + '%' : '—'
-)
+function formatNumber(value: number | null | undefined, decimals = 4) {
+  if (value === null || value === undefined || Number.isNaN(value)) return '-'
+  return value.toLocaleString('en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  })
+}
+
+const portfolioValue = computed(() => formatQuote(p.value?.xrp_value_quote ?? m.value?.xrp_value_quote ?? 0, 2))
+const quoteBalance = computed(() => formatQuote(p.value?.usd_balance ?? m.value?.usd_balance ?? 0, 2))
+const xrpBalance = computed(() => formatNumber(p.value?.xrp_balance ?? m.value?.xrp_balance ?? 0, 4))
+const xrpValue = computed(() => formatQuote(p.value?.xrp_value_quote ?? m.value?.xrp_value_quote ?? 0, 2))
+const totalTrades = computed(() => m.value?.total_trades ?? tradesStore.total ?? 0)
+const winRate = computed(() => m.value?.win_rate_pct != null ? m.value.win_rate_pct.toFixed(1) + '%' : '-')
 const winRateGood = computed(() => (m.value?.win_rate_pct ?? 0) >= 50)
-
+const averageEntry = computed(() => m.value?.avg_buy_price ? formatQuote(m.value.avg_buy_price, 4) : '-')
+const roiPct = computed(() => p.value?.roi_pct ?? m.value?.roi_pct ?? null)
+const roiPositive = computed(() => (roiPct.value ?? 0) >= 0)
+const roiLabel = computed(() => roiPct.value !== null ? (roiPositive.value ? '+' : '') + roiPct.value.toFixed(2) + '%' : '-')
 </script>
 
 <template>
-  <div class="space-y-5 max-w-[1400px]">
-
-    <!-- Header -->
-    <div>
-      <h1 class="text-lg font-semibold text-gray-100">Dashboard</h1>
-      <p class="text-xs text-gray-500 mt-0.5">XRP paper trading overview</p>
+  <div class="view-shell">
+    <div class="view-header">
+      <div>
+        <h1 class="view-title">Dashboard</h1>
+        <p class="view-subtitle">XRP / XRP-{{ quoteCurrency }} trading overview using live account and price data.</p>
+      </div>
     </div>
 
-    <!-- Portfolio hero + stat row -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-      <!-- Portfolio value hero -->
-      <div class="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5 flex flex-col gap-4">
-        <div class="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">XRP Value</div>
-        <div>
-          <div class="text-3xl font-bold font-mono tabular-nums text-gray-100 leading-none">{{ quoteSymbol }}{{ portfolioValue }}</div>
-          <div class="mt-2">
-            <span
-              :class="[
-                'inline-block text-xs font-semibold font-mono tabular-nums px-2 py-0.5 rounded border',
-                roiPositive
-                  ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
-                  : 'text-rose-400 bg-rose-500/10 border-rose-500/20'
-              ]"
-            >{{ roiLabel }}</span>
-            <span class="text-xs text-gray-600 ml-2">XRP position return</span>
+    <div class="grid grid-cols-1 gap-4 xl:grid-cols-5">
+      <div class="metric-card">
+        <div class="metric-top">
+          <div class="metric-icon">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 7.5h14a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2v-9a2 2 0 012-2zm0 0V5.5a2 2 0 012-2h10" />
+            </svg>
           </div>
+          <span>Portfolio Value</span>
         </div>
-        <div class="pt-3 border-t border-white/[0.06] grid grid-cols-2 gap-4">
-          <div>
-            <div class="text-[10px] text-gray-600 uppercase tracking-wider mb-1">{{ quoteCurrency }}</div>
-            <div class="text-sm font-mono font-medium text-gray-300 tabular-nums">
-              {{ quoteSymbol }}{{ (p?.usd_balance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
-            </div>
-          </div>
-          <div>
-            <div class="text-[10px] text-gray-600 uppercase tracking-wider mb-1">XRP</div>
-            <div class="text-sm font-mono font-medium text-gray-300 tabular-nums">
-              {{ p?.xrp_balance?.toFixed(4) ?? '—' }}
-            </div>
+        <div>
+          <div class="metric-value">{{ portfolioValue }}</div>
+          <div class="metric-sub">
+            <span :class="roiPositive ? 'text-emerald-400' : 'text-rose-400'">{{ roiLabel }}</span>
+            <span class="ml-2">ROI</span>
           </div>
         </div>
       </div>
 
-      <!-- Secondary metrics -->
-      <div class="lg:col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-4">
-
-        <div class="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 flex flex-col justify-between gap-2">
-          <div class="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Trades</div>
-          <div class="text-2xl font-bold font-mono tabular-nums text-gray-100">{{ m?.total_trades ?? '—' }}</div>
-          <div class="text-[11px] text-gray-600">{{ m?.buy_count ?? 0 }} buy · {{ m?.sell_count ?? 0 }} sell</div>
-        </div>
-
-        <div class="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 flex flex-col justify-between gap-2">
-          <div class="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Win Rate</div>
-          <div
-            :class="['text-2xl font-bold font-mono tabular-nums', winRateGood ? 'text-emerald-400' : 'text-rose-400']"
-          >{{ m?.win_rate_pct != null ? m.win_rate_pct.toFixed(1) + '%' : '—' }}</div>
-          <div class="text-[11px] text-gray-600">of closed trades</div>
-        </div>
-
-        <div class="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 flex flex-col justify-between gap-2">
-          <div class="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Fees Paid</div>
-          <div class="text-2xl font-bold font-mono tabular-nums text-gray-100">
-            {{ m?.total_fees_usd != null ? quoteSymbol + m.total_fees_usd.toFixed(2) : '—' }}
+      <div class="metric-card">
+        <div class="metric-top">
+          <div class="metric-icon">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 7c0 1.66 3.58 3 8 3s8-1.34 8-3-3.58-3-8-3-8 1.34-8 3zm0 0v5c0 1.66 3.58 3 8 3s8-1.34 8-3V7M4 12v5c0 1.66 3.58 3 8 3s8-1.34 8-3v-5" />
+            </svg>
           </div>
-          <div class="text-[11px] text-gray-600">total {{ quoteCurrency }}</div>
+          <span>Open XRP Position</span>
         </div>
+        <div>
+          <div class="metric-value">{{ xrpBalance }} <span class="text-lg text-slate-300">XRP</span></div>
+          <div class="metric-sub">approx {{ xrpValue }}</div>
+        </div>
+      </div>
 
-        <div class="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 flex flex-col justify-between gap-2">
-          <div class="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Avg Buy</div>
-          <div class="text-2xl font-bold font-mono tabular-nums text-gray-100">
-            {{ m?.avg_buy_price ? quoteSymbol + m.avg_buy_price.toFixed(4) : '—' }}
+      <div class="metric-card">
+        <div class="metric-top">
+          <div class="metric-icon">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h11m0 0l-4-4m4 4l-4 4M17 17H6m0 0l4 4m-4-4l4-4" />
+            </svg>
           </div>
-          <div class="text-[11px] text-gray-600">per XRP</div>
+          <span>Total Trades</span>
         </div>
+        <div>
+          <div class="metric-value">{{ totalTrades }}</div>
+          <div class="metric-sub">{{ m?.buy_count ?? 0 }} buy / {{ m?.sell_count ?? 0 }} sell</div>
+        </div>
+      </div>
 
+      <div class="metric-card">
+        <div class="metric-top">
+          <div class="metric-icon">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0V4zm10 2h3a3 3 0 01-3 3M7 6H4a3 3 0 003 3" />
+            </svg>
+          </div>
+          <span>Win Rate</span>
+        </div>
+        <div>
+          <div class="metric-value" :class="winRateGood ? 'text-emerald-400' : 'text-rose-400'">{{ winRate }}</div>
+          <div class="metric-sub">Closed trades</div>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-top">
+          <div class="metric-icon">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zm0-13v4l3 2" />
+            </svg>
+          </div>
+          <span>Average Entry</span>
+        </div>
+        <div>
+          <div class="metric-value">{{ averageEntry }}</div>
+          <div class="metric-sub">Per XRP</div>
+        </div>
       </div>
     </div>
 
-    <!-- Price Chart -->
-    <div class="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
-      <div class="flex items-center justify-between mb-4">
+    <div class="panel p-5">
+      <div class="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 class="text-sm font-semibold text-gray-200">XRP / {{ quoteCurrency }}</h2>
-          <p class="text-xs text-gray-500 mt-0.5">DIA Oracle · real-time</p>
+          <h2 class="section-title">{{ currentPair }}</h2>
+          <p class="section-subtitle mt-1">{{ priceStore.current ? 'Live price feed' : 'Waiting for live price feed' }}</p>
         </div>
-        <div class="flex gap-1">
+        <div class="segmented">
           <button
             v-for="tf in timeframes"
             :key="tf"
             @click="timeframe = tf"
-            :class="[
-              'px-2.5 py-1 text-xs rounded-md font-medium transition-colors',
-              timeframe === tf
-                ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30'
-                : 'text-gray-500 hover:text-gray-300 border border-transparent'
-            ]"
-          >{{ tf }}</button>
+            class="segmented-button"
+            :class="{ 'segmented-button-active': timeframe === tf }"
+          >
+            {{ tf.toUpperCase() }}
+          </button>
         </div>
       </div>
       <PriceChart :data="priceStore.history" :loading="priceStore.loading" :quote-currency="quoteCurrency" />
     </div>
 
-    <!-- Recent trades + AI decisions -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-
-      <div class="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-sm font-semibold text-gray-200">Recent Trades</h2>
-          <RouterLink to="/trades" class="text-xs text-sky-400 hover:text-sky-300 transition-colors">View all →</RouterLink>
+    <div class="grid grid-cols-1 gap-5 xl:grid-cols-2">
+      <div class="panel p-5">
+        <div class="mb-4 flex items-center justify-between">
+          <h2 class="section-title">Recent Trades</h2>
+          <RouterLink to="/trades" class="text-sm font-medium text-blue-400 hover:text-blue-300">View all</RouterLink>
         </div>
-        <div v-if="tradesStore.items.length === 0" class="text-sm text-gray-600 text-center py-8">No trades yet</div>
-        <div v-else class="space-y-2">
-          <TradeRow v-for="trade in tradesStore.items.slice(0, 8)" :key="trade.id" :trade="trade" />
+        <div v-if="tradesStore.items.length === 0" class="rounded-xl border border-slate-700/40 bg-slate-950/25 py-10 text-center text-sm text-slate-500">
+          No trades yet
+        </div>
+        <div v-else class="space-y-3">
+          <TradeRow v-for="trade in tradesStore.items.slice(0, 4)" :key="trade.id" :trade="trade" />
         </div>
       </div>
 
-      <div class="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-sm font-semibold text-gray-200">AI Decisions</h2>
-          <RouterLink to="/ai" class="text-xs text-sky-400 hover:text-sky-300 transition-colors">View all →</RouterLink>
+      <div class="panel p-5">
+        <div class="mb-4 flex items-center justify-between">
+          <h2 class="section-title">AI Decisions</h2>
+          <RouterLink to="/ai" class="text-sm font-medium text-blue-400 hover:text-blue-300">View all</RouterLink>
         </div>
-        <div v-if="aiStore.items.length === 0" class="text-sm text-gray-600 text-center py-8">No AI decisions yet</div>
+        <div v-if="aiStore.items.length === 0" class="rounded-xl border border-slate-700/40 bg-slate-950/25 py-10 text-center text-sm text-slate-500">
+          No AI decisions yet
+        </div>
         <div v-else class="space-y-2">
           <AIDecisionCard
             v-for="decision in aiStore.items.slice(0, 5)"
@@ -188,7 +211,17 @@ const winRateGood = computed(() => (m.value?.win_rate_pct ?? 0) >= 50)
           />
         </div>
       </div>
+    </div>
 
+    <div class="panel flex flex-col gap-3 p-4 text-sm text-slate-400 md:flex-row md:items-center md:justify-between">
+      <div>
+        <span class="font-semibold text-slate-200">{{ quoteCurrency }} cash balance:</span>
+        <span class="ml-2 tabular-nums">{{ quoteBalance }}</span>
+      </div>
+      <div>
+        <span class="font-semibold text-slate-200">Current XRP price:</span>
+        <span class="ml-2 tabular-nums">{{ priceStore.current ? formatQuote(priceStore.current.price, 6) : '-' }}</span>
+      </div>
     </div>
   </div>
 </template>

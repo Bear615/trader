@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from 'vue'
-import { RouterView, useRoute } from 'vue-router'
+import { RouterView } from 'vue-router'
 import { usePriceStore } from '@/stores/price'
 import { useSettingsStore } from '@/stores/settings'
 import SidebarNav from '@/components/SidebarNav.vue'
@@ -50,27 +50,16 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div v-if="checkingSession" class="h-screen bg-surface-950" />
+  <div v-if="checkingSession" class="h-screen bg-[#050a12]" />
   <SiteLock v-else-if="!siteUnlocked" @unlocked="onUnlocked" />
 
-  <div v-else class="flex h-screen bg-surface-950 overflow-hidden relative">
-    <!-- Subtle dot-grid texture — static, zero JS cost -->
-    <div
-      class="absolute inset-0 pointer-events-none"
-      aria-hidden="true"
-      style="background-image: radial-gradient(circle, #27272a 1px, transparent 1px); background-size: 28px 28px; opacity: 0.5;"
-    />
-
-    <!-- Sidebar (desktop only) -->
+  <div v-else class="app-shell">
     <SidebarNav class="hidden md:flex" />
 
-    <!-- Main content area -->
-    <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10">
-      <!-- Topbar -->
+    <div class="app-main">
       <TopBar />
 
-      <!-- Page content — extra bottom padding on mobile for floating island -->
-      <main class="flex-1 overflow-y-auto p-4 md:p-6 pb-28 md:pb-6 relative">
+      <main class="content-area">
         <RouterView v-slot="{ Component }">
           <Transition name="page">
             <component :is="Component" />
@@ -79,7 +68,6 @@ onUnmounted(() => {
       </main>
     </div>
 
-    <!-- Floating Island nav (mobile only) -->
     <FloatingIslandNav />
   </div>
 </template>

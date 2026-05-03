@@ -98,11 +98,11 @@ function fmtDate(d: string) {
 </script>
 
 <template>
-  <div class="space-y-6 max-w-[1200px]">
+  <div class="view-shell">
     <!-- Header -->
     <div>
-      <h1 class="text-xl font-semibold text-gray-100">Backtesting</h1>
-      <p class="text-sm text-gray-500 mt-0.5">Replay historical XRP price data through AI trading strategies</p>
+      <h1 class="view-title">Backtesting</h1>
+      <p class="view-subtitle">Replay historical XRP/{{ quoteCurrency }} price data through AI trading strategies.</p>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
