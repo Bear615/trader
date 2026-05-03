@@ -53,6 +53,7 @@ DEFAULTS: dict[str, tuple[Any, str]] = {
     "ai_system_prompt":                 (
         "You are an expert XRP cryptocurrency trader. Analyse the provided market data "
         "and portfolio state and return a trading decision as valid JSON only. "
+        "Valid actions are BUY, SELL, or HOLD. Use recent trades context for both BUY and SELL history. "
         "Consider trend, momentum, risk/reward, and portfolio balance. "
         "Be disciplined — only trade when there is a clear signal.",
         "System prompt sent to the AI model before market data",
