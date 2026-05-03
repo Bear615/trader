@@ -159,17 +159,16 @@ async def manual_trade(body: ManualTradeBody, db: Session = Depends(get_db)):
 
 @router.post("/ai/trigger")
 async def trigger_ai(db: Session = Depends(get_db)):
-    from app.services.ai_service import make_decision
+    from app.services.ai_service import make_decision, get_last_ai_error
     decision = await make_decision(db, bypass_guards=True)
     if not decision:
         from fastapi import HTTPException
+        detail = get_last_ai_error() or (
+            "AI decision could not be made. Check AI provider settings and backend logs."
+        )
         raise HTTPException(
             status_code=400,
-            detail=(
-                "AI decision could not be made. Check the backend console for the reason. "
-                "Common causes: no price data yet, wrong ai_provider_preset (must be 'ollama'), "
-                "or Ollama is unreachable at the configured URL."
-            ),
+            detail=detail,
         )
     return decision.to_dict(include_raw=True)
 

@@ -45,6 +45,16 @@ PROVIDER_PRESETS: dict[str, str] = {
 
 # Tracks the price at the last successful AI call. Resets on restart (first call always fires).
 _last_ai_price: Optional[float] = None
+_last_ai_error: Optional[str] = None
+
+
+def get_last_ai_error() -> Optional[str]:
+    return _last_ai_error
+
+
+def _set_ai_error(message: str) -> None:
+    global _last_ai_error
+    _last_ai_error = message
 
 
 def _resolve_client_params(db: Session) -> dict:
@@ -262,6 +272,7 @@ async def make_decision(db: Session, bypass_guards: bool = False) -> Optional[AI
     so that manual triggers always attempt a request.
     """
     from app.services.price_service import get_latest_price
+    _set_ai_error("")
 
     # Guard: check master switch each time (skipped for manual triggers)
     if not bypass_guards and not get_setting(db, "ai_enabled"):
@@ -367,6 +378,10 @@ async def make_decision(db: Session, bypass_guards: bool = False) -> Optional[AI
             from openai import AsyncOpenAI
 
             if not openai_params.get("api_key") or openai_params["api_key"] == "none":
+                _set_ai_error(
+                    "No AI API key configured. Set OPENAI_API_KEY in .env or ai_api_key in Admin settings. "
+                    "If using Ollama, set ai_provider_preset to 'ollama' in Admin > AI Provider."
+                )
                 logger.error(
                     "No AI API key configured — set OPENAI_API_KEY in .env or ai_api_key in Admin settings. "
                     "If using Ollama, make sure ai_provider_preset is set to 'ollama' in Admin > AI Provider."
@@ -378,23 +393,7 @@ async def make_decision(db: Session, bypass_guards: bool = False) -> Optional[AI
             client = AsyncOpenAI(**openai_params)
             use_tools = bool(get_setting(db, "ai_use_tools"))
 
-            if use_tools:
-                response = await client.chat.completions.create(
-                    model=model,
-                    temperature=temperature,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    tools=[{"type": "function", "function": DECISION_FUNCTION}],
-                    tool_choice={"type": "function", "function": {"name": "trading_decision"}},
-                )
-                raw_response = response.model_dump_json()
-                usage = response.usage
-                tool_call = response.choices[0].message.tool_calls[0]
-                args = json.loads(tool_call.function.arguments)
-            else:
-                # JSON-mode fallback for providers that don't support tools
+            async def call_json_mode():
                 json_system = (
                     system_prompt
                     + "\n\nRespond ONLY with a valid JSON object with exactly these keys: "
@@ -414,9 +413,31 @@ async def make_decision(db: Session, bypass_guards: bool = False) -> Optional[AI
                 raw_response = response.model_dump_json()
                 usage = response.usage
                 content = response.choices[0].message.content or "{}"
-                # Strip markdown code fences if present
                 content = content.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
-                args = json.loads(content)
+                return json.loads(content), raw_response, usage
+
+            if use_tools:
+                try:
+                    response = await client.chat.completions.create(
+                        model=model,
+                        temperature=temperature,
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_prompt},
+                        ],
+                        tools=[{"type": "function", "function": DECISION_FUNCTION}],
+                        tool_choice={"type": "function", "function": {"name": "trading_decision"}},
+                    )
+                except Exception as exc:
+                    logger.warning("AI tools request failed; retrying without tools: %s", exc)
+                    args, raw_response, usage = await call_json_mode()
+                else:
+                    raw_response = response.model_dump_json()
+                    usage = response.usage
+                    tool_call = response.choices[0].message.tool_calls[0]
+                    args = json.loads(tool_call.function.arguments)
+            else:
+                args, raw_response, usage = await call_json_mode()
 
         action = args["action"].upper()
         xrp_amount_raw = args.get("xrp_amount")
@@ -472,5 +493,7 @@ async def make_decision(db: Session, bypass_guards: bool = False) -> Optional[AI
         return decision
 
     except Exception as exc:
-        logger.error("AI decision failed: %s", exc)
+        message = f"AI decision failed: {exc}"
+        _set_ai_error(message)
+        logger.error(message)
         return None
