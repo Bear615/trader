@@ -346,54 +346,22 @@ async def make_decision(db: Session, bypass_guards: bool = False) -> Optional[AI
     # All guards passed — anchor the reference price for the next threshold check
     _last_ai_price = current_price
 
+    last_execution_error: Optional[str] = None
+
     try:
         client_params = _resolve_client_params(db)
         preset = client_params.get("_preset", "openai")
         openai_params = {k: v for k, v in client_params.items() if not k.startswith("_")}
+        max_attempts = 2
+        retry_guidance = ""
 
-        if preset == "ollama":
-            from app.core.config import config as app_config
-            base_url = openai_params.get("base_url") or app_config.ollama_base_url or PROVIDER_PRESETS["ollama"]
-            endpoint = base_url.rstrip("/") + "/chat"
-            logger.info("Sending request to Ollama: %s  model=%s", endpoint, model)
-            json_system = (
-                system_prompt
-                + "\n\nRespond ONLY with a valid JSON object with exactly these keys: "
-                "action (string: BUY, SELL, or HOLD), "
-                "xrp_amount (number or null), "
-                "confidence (number 0.0-1.0), "
-                "reasoning (string)."
-            )
-            messages = [
-                {"role": "system", "content": json_system},
-                {"role": "user", "content": user_prompt},
-            ]
-            args, raw_response, pt, ct = await _call_ollama_native(
-                endpoint, model, messages, temperature,
-                timeout=float(get_setting(db, "ai_ollama_timeout_seconds")),
-            )
-            from types import SimpleNamespace
-            usage = SimpleNamespace(prompt_tokens=pt, completion_tokens=ct)
-        else:
-            from openai import AsyncOpenAI
-
-            if not openai_params.get("api_key") or openai_params["api_key"] == "none":
-                _set_ai_error(
-                    "No AI API key configured. Set OPENAI_API_KEY in .env or ai_api_key in Admin settings. "
-                    "If using Ollama, set ai_provider_preset to 'ollama' in Admin > AI Provider."
-                )
-                logger.error(
-                    "No AI API key configured — set OPENAI_API_KEY in .env or ai_api_key in Admin settings. "
-                    "If using Ollama, make sure ai_provider_preset is set to 'ollama' in Admin > AI Provider."
-                )
-                return None
-            logger.info("Sending request to provider '%s' base_url=%s  model=%s",
-                        preset, openai_params.get("base_url", "(openai default)"), model)
-
-            client = AsyncOpenAI(**openai_params)
-            use_tools = bool(get_setting(db, "ai_use_tools"))
-
-            async def call_json_mode():
+        for attempt in range(1, max_attempts + 1):
+            prompt_for_attempt = user_prompt + retry_guidance
+            if preset == "ollama":
+                from app.core.config import config as app_config
+                base_url = openai_params.get("base_url") or app_config.ollama_base_url or PROVIDER_PRESETS["ollama"]
+                endpoint = base_url.rstrip("/") + "/chat"
+                logger.info("Sending request to Ollama: %s  model=%s", endpoint, model)
                 json_system = (
                     system_prompt
                     + "\n\nRespond ONLY with a valid JSON object with exactly these keys: "
@@ -402,98 +370,150 @@ async def make_decision(db: Session, bypass_guards: bool = False) -> Optional[AI
                     "confidence (number 0.0-1.0), "
                     "reasoning (string)."
                 )
-                response = await client.chat.completions.create(
-                    model=model,
-                    temperature=temperature,
-                    messages=[
-                        {"role": "system", "content": json_system},
-                        {"role": "user", "content": user_prompt},
-                    ],
+                messages = [
+                    {"role": "system", "content": json_system},
+                    {"role": "user", "content": prompt_for_attempt},
+                ]
+                args, raw_response, pt, ct = await _call_ollama_native(
+                    endpoint, model, messages, temperature,
+                    timeout=float(get_setting(db, "ai_ollama_timeout_seconds")),
                 )
-                raw_response = response.model_dump_json()
-                usage = response.usage
-                content = response.choices[0].message.content or "{}"
-                content = content.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
-                return json.loads(content), raw_response, usage
+                from types import SimpleNamespace
+                usage = SimpleNamespace(prompt_tokens=pt, completion_tokens=ct)
+            else:
+                from openai import AsyncOpenAI
 
-            if use_tools:
-                try:
+                if not openai_params.get("api_key") or openai_params["api_key"] == "none":
+                    _set_ai_error(
+                        "No AI API key configured. Set OPENAI_API_KEY in .env or ai_api_key in Admin settings. "
+                        "If using Ollama, set ai_provider_preset to 'ollama' in Admin > AI Provider."
+                    )
+                    logger.error(
+                        "No AI API key configured — set OPENAI_API_KEY in .env or ai_api_key in Admin settings. "
+                        "If using Ollama, make sure ai_provider_preset is set to 'ollama' in Admin > AI Provider."
+                    )
+                    return None
+                logger.info("Sending request to provider '%s' base_url=%s  model=%s",
+                            preset, openai_params.get("base_url", "(openai default)"), model)
+
+                client = AsyncOpenAI(**openai_params)
+                use_tools = bool(get_setting(db, "ai_use_tools"))
+
+                async def call_json_mode():
+                    json_system = (
+                        system_prompt
+                        + "\n\nRespond ONLY with a valid JSON object with exactly these keys: "
+                        "action (string: BUY, SELL, or HOLD), "
+                        "xrp_amount (number or null), "
+                        "confidence (number 0.0-1.0), "
+                        "reasoning (string)."
+                    )
                     response = await client.chat.completions.create(
                         model=model,
                         temperature=temperature,
                         messages=[
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": user_prompt},
+                            {"role": "system", "content": json_system},
+                            {"role": "user", "content": prompt_for_attempt},
                         ],
-                        tools=[{"type": "function", "function": DECISION_FUNCTION}],
-                        tool_choice={"type": "function", "function": {"name": "trading_decision"}},
                     )
-                except Exception as exc:
-                    logger.warning("AI tools request failed; retrying without tools: %s", exc)
-                    args, raw_response, usage = await call_json_mode()
-                else:
                     raw_response = response.model_dump_json()
                     usage = response.usage
-                    tool_call = response.choices[0].message.tool_calls[0]
-                    args = json.loads(tool_call.function.arguments)
-            else:
-                args, raw_response, usage = await call_json_mode()
+                    content = response.choices[0].message.content or "{}"
+                    content = content.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
+                    return json.loads(content), raw_response, usage
 
-        action = args["action"].upper()
-        xrp_amount_raw = args.get("xrp_amount")
-        # Ensure xrp_amount is a float (AI may return string or null)
-        try:
-            xrp_amount = float(xrp_amount_raw) if xrp_amount_raw is not None else None
-        except (ValueError, TypeError):
-            xrp_amount = None
-        confidence = float(args.get("confidence", 0.5))
-        reasoning = args.get("reasoning", "")
+                if use_tools:
+                    try:
+                        response = await client.chat.completions.create(
+                            model=model,
+                            temperature=temperature,
+                            messages=[
+                                {"role": "system", "content": system_prompt},
+                                {"role": "user", "content": prompt_for_attempt},
+                            ],
+                            tools=[{"type": "function", "function": DECISION_FUNCTION}],
+                            tool_choice={"type": "function", "function": {"name": "trading_decision"}},
+                        )
+                    except Exception as exc:
+                        logger.warning("AI tools request failed; retrying without tools: %s", exc)
+                        args, raw_response, usage = await call_json_mode()
+                    else:
+                        raw_response = response.model_dump_json()
+                        usage = response.usage
+                        tool_call = response.choices[0].message.tool_calls[0]
+                        args = json.loads(tool_call.function.arguments)
+                else:
+                    args, raw_response, usage = await call_json_mode()
 
-        decision = AIDecision(
-            timestamp=datetime.utcnow(),
-            action=action,
-            xrp_amount=xrp_amount,
-            confidence=confidence,
-            reasoning=reasoning,
-            raw_prompt=user_prompt,
-            raw_response=raw_response,
-            executed=False,
-            model_used=model,
-            prompt_tokens=usage.prompt_tokens if usage else None,
-            completion_tokens=usage.completion_tokens if usage else None,
-        )
-        db.add(decision)
-        db.commit()
-        db.refresh(decision)
+            action = args["action"].upper()
+            xrp_amount_raw = args.get("xrp_amount")
+            # Ensure xrp_amount is a float (AI may return string or null)
+            try:
+                xrp_amount = float(xrp_amount_raw) if xrp_amount_raw is not None else None
+            except (ValueError, TypeError):
+                xrp_amount = None
+            confidence = float(args.get("confidence", 0.5))
+            reasoning = args.get("reasoning", "")
 
-        # Execute the trade if action is not HOLD
-        if action in ("BUY", "SELL") and xrp_amount and xrp_amount > 0:
-            _, err = await execute_trade(
-                db=db,
+            decision = AIDecision(
+                timestamp=datetime.utcnow(),
                 action=action,
-                xrp_amount=float(xrp_amount),
-                current_price=current_price,
-                fee_type="taker",
-                ai_decision_id=decision.id,
-                triggered_by="ai",
+                xrp_amount=xrp_amount,
+                confidence=confidence,
+                reasoning=reasoning,
+                raw_prompt=prompt_for_attempt,
+                raw_response=raw_response,
+                executed=False,
+                model_used=model,
+                prompt_tokens=usage.prompt_tokens if usage else None,
+                completion_tokens=usage.completion_tokens if usage else None,
             )
-            decision.executed = err is None
-            decision.execution_error = err
+            db.add(decision)
             db.commit()
+            db.refresh(decision)
 
-        await ws_manager.broadcast("decisions", decision.to_dict(include_raw=True))
+            # Execute the trade if action is not HOLD
+            if action in ("BUY", "SELL") and xrp_amount and xrp_amount > 0:
+                _, err = await execute_trade(
+                    db=db,
+                    action=action,
+                    xrp_amount=float(xrp_amount),
+                    current_price=current_price,
+                    fee_type="taker",
+                    ai_decision_id=decision.id,
+                    triggered_by="ai",
+                )
+                decision.executed = err is None
+                decision.execution_error = err
+                db.commit()
+                if err and attempt < max_attempts:
+                    last_execution_error = err
+                    logger.warning("AI trade execution failed on attempt %d/%d: %s", attempt, max_attempts, err)
+                    retry_guidance = (
+                        "\n\nRETRY FEEDBACK\n"
+                        f"Last trade failed with: {err}.\n"
+                        "Return a corrected decision that respects balances, max_trade_quote, max_xrp, and min_trade_quote. "
+                        "Use HOLD with xrp_amount null if a valid BUY/SELL is not possible right now."
+                    )
+                    continue
 
-        from app.services.telegram_service import notify_decision
-        await notify_decision(db, decision)
+            await ws_manager.broadcast("decisions", decision.to_dict(include_raw=True))
 
-        logger.info(
-            "AI decision: %s %.4f XRP (conf=%.2f) — %s",
-            action, xrp_amount or 0, confidence, reasoning[:60],
-        )
-        return decision
+            from app.services.telegram_service import notify_decision
+            await notify_decision(db, decision)
+
+            logger.info(
+                "AI decision: %s %.4f XRP (conf=%.2f) — %s",
+                action, xrp_amount or 0, confidence, reasoning[:60],
+            )
+            return decision
+
+        return None
 
     except Exception as exc:
         message = f"AI decision failed: {exc}"
+        if last_execution_error:
+            message = f"{message}. Last execution error: {last_execution_error}"
         _set_ai_error(message)
         logger.error(message)
         return None

@@ -39,7 +39,12 @@ async function trigger() {
   triggering.value = true
   triggerError.value = ''
   try {
-    await store.triggerDecision()
+    const decision = await store.triggerDecision()
+    if (decision.action !== 'HOLD' && !decision.executed) {
+      triggerError.value = decision.execution_error
+        ? `Trade failed: ${decision.execution_error}`
+        : 'Trade was not executed. The AI has been asked to retry with a corrected amount.'
+    }
     await store.fetchDecisions(1)
   } catch (e: unknown) {
     triggerError.value = axios.isAxiosError(e)
