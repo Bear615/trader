@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { PricePoint } from '@/api/types'
-import { currencySymbol } from '@/utils/format'
+import { formatCurrency } from '@/utils/format'
 
 const props = defineProps<{
   data: PricePoint[]
@@ -15,6 +15,45 @@ const THEME = {
   label: '#8b98aa',
   grid: 'rgba(148, 163, 184, 0.13)',
 } as const
+
+const chartPoints = computed(() =>
+  props.data
+    .map((p) => ({ time: new Date(p.timestamp).getTime(), price: Number(p.price) }))
+    .filter((p) => Number.isFinite(p.time) && Number.isFinite(p.price))
+    .sort((a, b) => a.time - b.time),
+)
+
+const valueBounds = computed(() => {
+  const prices = chartPoints.value.map((p) => p.price)
+  if (!prices.length) return undefined
+
+  const min = Math.min(...prices)
+  const max = Math.max(...prices)
+  const range = max - min
+  const fallbackPadding = Math.max(Math.abs(max) * 0.015, 0.0005)
+  const padding = range > 0 ? Math.max(range * 0.18, fallbackPadding) : fallbackPadding
+
+  return {
+    min: Math.max(0, min - padding),
+    max: max + padding,
+  }
+})
+
+const timeBounds = computed(() => {
+  const points = chartPoints.value
+  if (!points.length) return undefined
+  if (points.length === 1) {
+    const padding = 5 * 60 * 1000
+    return {
+      min: points[0].time - padding,
+      max: points[0].time + padding,
+    }
+  }
+  return {
+    min: points[0].time,
+    max: points[points.length - 1].time,
+  }
+})
 
 const chartOptions = computed(() => ({
   chart: {
@@ -41,6 +80,8 @@ const chartOptions = computed(() => ({
   },
   xaxis: {
     type: 'datetime',
+    min: timeBounds.value?.min,
+    max: timeBounds.value?.max,
     labels: {
       style: { colors: THEME.label, fontSize: '12px', fontWeight: 500 },
       datetimeUTC: false,
@@ -50,9 +91,14 @@ const chartOptions = computed(() => ({
     tooltip: { enabled: false },
   },
   yaxis: {
+    min: valueBounds.value?.min,
+    max: valueBounds.value?.max,
+    tickAmount: 4,
+    forceNiceScale: false,
+    decimalsInFloat: 4,
     labels: {
       style: { colors: THEME.label, fontSize: '12px', fontWeight: 500 },
-      formatter: (v: number) => currencySymbol(props.quoteCurrency) + v.toFixed(4),
+      formatter: (v: number) => formatCurrency(v, props.quoteCurrency, 4),
     },
   },
   grid: {
@@ -64,7 +110,7 @@ const chartOptions = computed(() => ({
   },
   tooltip: {
     x: { format: 'dd MMM HH:mm:ss' },
-    y: { formatter: (v: number) => currencySymbol(props.quoteCurrency) + v.toFixed(6) },
+    y: { formatter: (v: number) => formatCurrency(v, props.quoteCurrency, 6) },
   },
   dataLabels: { enabled: false },
   markers: { size: 0 },
@@ -73,7 +119,7 @@ const chartOptions = computed(() => ({
 const series = computed(() => [
   {
     name: `XRP/${props.quoteCurrency ?? 'GBP'}`,
-    data: props.data.map((p) => [new Date(p.timestamp).getTime(), p.price]),
+    data: chartPoints.value.map((p) => [p.time, p.price]),
   },
 ])
 </script>
