@@ -1,0 +1,897 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trader Mobile Redesign Preview</title>
+  <style>
+    :root {
+      --bg: #090b0c;
+      --panel: #131719;
+      --panel-2: #181d20;
+      --line: #2a3135;
+      --line-soft: #20262a;
+      --text: #f3f6f4;
+      --muted: #a7b0ad;
+      --faint: #67706d;
+      --green: #3fd181;
+      --green-bg: rgba(63, 209, 129, 0.12);
+      --red: #ff6b7d;
+      --red-bg: rgba(255, 107, 125, 0.13);
+      --amber: #f3b84b;
+      --amber-bg: rgba(243, 184, 75, 0.13);
+      --cyan: #59c7e8;
+      --cyan-bg: rgba(89, 199, 232, 0.12);
+      --ink: #0f1213;
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      width: 100%;
+      min-height: 100%;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    body {
+      overflow: hidden;
+    }
+
+    .screen {
+      position: relative;
+      min-height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      background:
+        linear-gradient(180deg, rgba(89, 199, 232, 0.05), transparent 210px),
+        linear-gradient(155deg, rgba(63, 209, 129, 0.04), transparent 330px),
+        var(--bg);
+    }
+
+    .statusbar {
+      height: 32px;
+      padding: 10px 18px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 700;
+      color: #eef3f0;
+    }
+
+    .signals {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .signal-bars {
+      display: flex;
+      align-items: end;
+      gap: 2px;
+      height: 12px;
+    }
+
+    .signal-bars span {
+      width: 3px;
+      border-radius: 2px;
+      background: currentColor;
+    }
+
+    .signal-bars span:nth-child(1) { height: 4px; }
+    .signal-bars span:nth-child(2) { height: 7px; }
+    .signal-bars span:nth-child(3) { height: 10px; }
+
+    .appbar {
+      padding: 13px 16px 12px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .eyebrow {
+      margin: 0 0 3px;
+      font-size: 10px;
+      line-height: 1;
+      color: var(--faint);
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.05;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin-top: 5px;
+      max-width: 245px;
+      font-size: 12px;
+      line-height: 1.35;
+      color: var(--muted);
+    }
+
+    .top-action {
+      min-width: 36px;
+      min-height: 36px;
+      padding: 0 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .top-action.primary {
+      border-color: rgba(63, 209, 129, 0.35);
+      background: var(--green-bg);
+      color: var(--green);
+    }
+
+    .content {
+      height: calc(100vh - 32px - 76px);
+      overflow: hidden;
+      padding: 0 14px 88px;
+    }
+
+    .stack { display: grid; gap: 10px; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+
+    .panel,
+    .metric,
+    .row,
+    .callout {
+      border: 1px solid var(--line-soft);
+      border-radius: 8px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent), var(--panel);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+    }
+
+    .panel { padding: 12px; }
+    .metric { padding: 11px; min-height: 86px; }
+
+    .metric .label,
+    .label {
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.1;
+      text-transform: uppercase;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+    }
+
+    .metric .value {
+      margin-top: 8px;
+      font-size: 20px;
+      line-height: 1;
+      font-weight: 850;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .metric .sub {
+      margin-top: 6px;
+      color: var(--faint);
+      font-size: 11px;
+      line-height: 1.25;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .hero-metric {
+      padding: 14px 14px 12px;
+      border: 1px solid rgba(63, 209, 129, 0.2);
+      border-radius: 8px;
+      background:
+        linear-gradient(135deg, rgba(63, 209, 129, 0.11), rgba(89, 199, 232, 0.055)),
+        var(--panel);
+    }
+
+    .hero-row {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .hero-price {
+      margin-top: 8px;
+      font-size: 33px;
+      line-height: 0.95;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 24px;
+      padding: 0 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .pill.green { border-color: rgba(63, 209, 129, 0.28); background: var(--green-bg); color: var(--green); }
+    .pill.red { border-color: rgba(255, 107, 125, 0.28); background: var(--red-bg); color: var(--red); }
+    .pill.amber { border-color: rgba(243, 184, 75, 0.3); background: var(--amber-bg); color: var(--amber); }
+    .pill.cyan { border-color: rgba(89, 199, 232, 0.3); background: var(--cyan-bg); color: var(--cyan); }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.2;
+      font-weight: 800;
+    }
+
+    .small {
+      font-size: 11px;
+      line-height: 1.3;
+      color: var(--faint);
+    }
+
+    .chart {
+      height: 132px;
+      width: 100%;
+      display: block;
+    }
+
+    .segmented {
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: 1fr;
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid var(--line-soft);
+      border-radius: 8px;
+      background: var(--ink);
+    }
+
+    .segmented span {
+      min-height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      color: var(--faint);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .segmented .active {
+      color: var(--text);
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+    }
+
+    .row {
+      min-height: 58px;
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .row-main { min-width: 0; flex: 1; }
+    .row-title { font-size: 13px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .row-sub { margin-top: 3px; color: var(--faint); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .row-value { text-align: right; font-size: 13px; font-weight: 850; font-variant-numeric: tabular-nums; }
+    .row-note { margin-top: 3px; color: var(--faint); font-size: 10px; font-variant-numeric: tabular-nums; }
+
+    .badge {
+      min-width: 42px;
+      min-height: 24px;
+      padding: 0 7px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.03em;
+    }
+
+    .buy { background: var(--green-bg); color: var(--green); border: 1px solid rgba(63, 209, 129, 0.25); }
+    .sell { background: var(--red-bg); color: var(--red); border: 1px solid rgba(255, 107, 125, 0.25); }
+    .hold { background: rgba(255, 255, 255, 0.06); color: var(--muted); border: 1px solid var(--line); }
+
+    .meter {
+      height: 7px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #0d1011;
+      border: 1px solid #1e2427;
+    }
+
+    .meter span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: currentColor;
+    }
+
+    .dist {
+      display: grid;
+      grid-template-columns: 48% 24% 28%;
+      gap: 2px;
+      height: 10px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #0d1011;
+    }
+
+    .dist span:nth-child(1) { background: var(--green); }
+    .dist span:nth-child(2) { background: var(--red); }
+    .dist span:nth-child(3) { background: #59636a; }
+
+    .form-row {
+      display: grid;
+      gap: 6px;
+    }
+
+    .input-like {
+      min-height: 42px;
+      padding: 0 11px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0d1011;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .slider {
+      height: 6px;
+      border-radius: 999px;
+      background: #0d1011;
+      overflow: hidden;
+    }
+
+    .slider span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--amber);
+    }
+
+    .footer-nav {
+      position: absolute;
+      left: 10px;
+      right: 10px;
+      bottom: 10px;
+      height: 66px;
+      padding: 7px 7px 6px;
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 3px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      background: rgba(14, 17, 18, 0.94);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+    }
+
+    .nav-item {
+      display: grid;
+      place-items: center;
+      align-content: center;
+      gap: 3px;
+      border-radius: 6px;
+      color: var(--faint);
+      font-size: 8px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .nav-icon {
+      width: 22px;
+      height: 20px;
+      display: grid;
+      place-items: center;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      font-size: 11px;
+      line-height: 1;
+    }
+
+    .nav-item.active {
+      color: var(--amber);
+      background: rgba(243, 184, 75, 0.08);
+    }
+
+    .nav-item.active .nav-icon {
+      border-color: rgba(243, 184, 75, 0.28);
+      background: var(--amber-bg);
+    }
+
+    .codebox {
+      max-height: 125px;
+      overflow: hidden;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0d1011;
+      color: #c4cbc8;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 10px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 8px;
+    }
+
+    .timeline-item {
+      display: grid;
+      grid-template-columns: 10px 1fr;
+      gap: 8px;
+      align-items: start;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      margin-top: 4px;
+      border-radius: 999px;
+      background: var(--cyan);
+      box-shadow: 0 0 0 4px rgba(89, 199, 232, 0.08);
+    }
+
+    .two-line-value {
+      font-size: 16px;
+      font-weight: 900;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .tone-green { color: var(--green); }
+    .tone-red { color: var(--red); }
+    .tone-amber { color: var(--amber); }
+    .tone-cyan { color: var(--cyan); }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script>
+    const nav = [
+      ["Home", "H"],
+      ["Trades", "T"],
+      ["AI", "AI"],
+      ["Monitor", "M"],
+      ["Test", "BT"],
+      ["Admin", "A"],
+    ];
+
+    function chart(color = "#3fd181", fill = "rgba(63,209,129,0.13)") {
+      return `
+        <svg class="chart" viewBox="0 0 330 132" aria-hidden="true">
+          <defs>
+            <linearGradient id="g-${color.replace("#", "")}" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0" stop-color="${fill}" />
+              <stop offset="1" stop-color="rgba(0,0,0,0)" />
+            </linearGradient>
+          </defs>
+          <path d="M8 104H322M8 72H322M8 40H322" fill="none" stroke="#242b2f" stroke-width="1"/>
+          <path d="M8 94 C34 86,45 75,68 80 C92 87,100 55,126 60 C150 66,161 38,184 42 C211 46,222 25,246 34 C276 46,289 20,322 26 L322 122 L8 122 Z" fill="url(#g-${color.replace("#", "")})"/>
+          <path d="M8 94 C34 86,45 75,68 80 C92 87,100 55,126 60 C150 66,161 38,184 42 C211 46,222 25,246 34 C276 46,289 20,322 26" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="322" cy="26" r="4" fill="${color}" />
+        </svg>`;
+    }
+
+    function metric(label, value, sub, tone = "") {
+      return `<div class="metric"><div class="label">${label}</div><div class="value ${tone}">${value}</div><div class="sub">${sub}</div></div>`;
+    }
+
+    function row(kind, title, sub, value, note, badgeClass = "hold") {
+      return `
+        <div class="row">
+          ${kind ? `<span class="badge ${badgeClass}">${kind}</span>` : ""}
+          <div class="row-main">
+            <div class="row-title">${title}</div>
+            <div class="row-sub">${sub}</div>
+          </div>
+          <div>
+            <div class="row-value">${value}</div>
+            <div class="row-note">${note}</div>
+          </div>
+        </div>`;
+    }
+
+    function shell(meta, body) {
+      const active = meta.active || "Home";
+      return `
+        <main class="screen">
+          <div class="statusbar">
+            <span>9:41</span>
+            <div class="signals">
+              <div class="signal-bars"><span></span><span></span><span></span></div>
+              <span>5G</span>
+              <span>84%</span>
+            </div>
+          </div>
+          <header class="appbar">
+            <div>
+              <p class="eyebrow">${meta.kicker || "XRP AI Trader"}</p>
+              <h1>${meta.title}</h1>
+              ${meta.subtitle ? `<div class="subtitle">${meta.subtitle}</div>` : ""}
+            </div>
+            ${meta.action ? `<div class="top-action ${meta.actionClass || ""}">${meta.action}</div>` : ""}
+          </header>
+          <section class="content">${body}</section>
+          <nav class="footer-nav">
+            ${nav.map(([label, icon]) => `
+              <div class="nav-item ${label === active ? "active" : ""}">
+                <div class="nav-icon">${icon}</div>
+                <div>${label}</div>
+              </div>
+            `).join("")}
+          </nav>
+        </main>`;
+    }
+
+    const screens = {
+      "01-dashboard": () => shell({
+        title: "Dashboard",
+        subtitle: "Live XRP/USD overview with account health first.",
+        action: "Live",
+        actionClass: "primary",
+        active: "Home"
+      }, `
+        <div class="stack">
+          <div class="hero-metric">
+            <div class="label">XRP / USD</div>
+            <div class="hero-row">
+              <div>
+                <div class="hero-price">$0.586421</div>
+                <div class="small">Updated 4 seconds ago</div>
+              </div>
+              <span class="pill green">+2.84% 24h</span>
+            </div>
+          </div>
+          <div class="grid2">
+            ${metric("Portfolio", "$12,840.22", "+7.4% ROI", "tone-green")}
+            ${metric("Open XRP", "18,420.25", "approx $10,801.38")}
+            ${metric("Cash", "$2,104.93", "available USD")}
+            ${metric("Win Rate", "63.8%", "142 closed trades", "tone-green")}
+          </div>
+          <div class="panel">
+            <div class="section-head">
+              <h2>Price Action</h2>
+              <span class="pill cyan">24H</span>
+            </div>
+            ${chart()}
+          </div>
+          <div class="grid2">
+            ${metric("Risk Used", "34%", "max daily trades: 7")}
+            ${metric("Avg Entry", "$0.5618", "per XRP")}
+          </div>
+        </div>
+      `),
+
+      "02-portfolio": () => shell({
+        title: "Portfolio",
+        subtitle: "Balances and exposure without the desktop table weight.",
+        action: "USD",
+        active: "Home"
+      }, `
+        <div class="stack">
+          <div class="hero-metric">
+            <div class="label">Total Account Value</div>
+            <div class="hero-row">
+              <div>
+                <div class="hero-price">$12,840</div>
+                <div class="small">XRP value plus cash balance</div>
+              </div>
+              <span class="pill green">+$886</span>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="section-head"><h2>Allocation</h2><span class="small">current</span></div>
+            <div class="dist" style="grid-template-columns: 84% 16%;"><span></span><span style="background:var(--cyan)"></span></div>
+            <div class="grid2" style="margin-top:11px">
+              ${metric("XRP", "84%", "18,420.2500 XRP")}
+              ${metric("Cash", "16%", "$2,104.93 USD")}
+            </div>
+          </div>
+          ${row("", "Position Value", "Marked against live XRP/USD", "$10,801.38", "$0.586421")}
+          ${row("", "Average Entry", "Weighted buy basis", "$0.5618", "+4.38% vs entry")}
+          ${row("", "Risk Capacity", "Position cap remaining", "21%", "max position 65%")}
+          <div class="callout panel">
+            <div class="section-head"><h2>Needed on mobile</h2><span class="pill amber">Priority</span></div>
+            <div class="small">Show exposure, free cash, average entry, and current price. Hide low-use audit columns until a detail view.</div>
+          </div>
+        </div>
+      `),
+
+      "03-trades": () => shell({
+        title: "Trades",
+        subtitle: "History as scan-friendly cards, not a squeezed table.",
+        action: "Export",
+        active: "Trades"
+      }, `
+        <div class="stack">
+          <div class="segmented"><span class="active">All</span><span>Buy</span><span>Sell</span></div>
+          <div class="grid2">
+            ${metric("Total Trades", "142", "all time")}
+            ${metric("Realized P&L", "+$318.44", "visible trades", "tone-green")}
+          </div>
+          ${row("BUY", "12.4200 XRP", "Today, 14:06:23 - AI", "$7.28", "$0.586218", "buy")}
+          ${row("SELL", "8.0000 XRP", "Today, 13:18:04 - AI", "+$1.42", "$0.589104", "sell")}
+          ${row("HOLD", "No trade", "Today, 12:45:11 - AI", "92%", "confidence", "hold")}
+          ${row("BUY", "22.1000 XRP", "Yesterday, 21:34:02 - manual", "$12.82", "$0.580154", "buy")}
+          ${row("SELL", "4.6000 XRP", "Yesterday, 18:02:45 - AI", "-$0.16", "$0.571900", "sell")}
+          <div class="panel">
+            <div class="section-head"><h2>Pagination</h2><span class="pill">Page 1 / 15</span></div>
+            <div class="small">Mobile should load more in place. Keep CSV export available, but secondary.</div>
+          </div>
+        </div>
+      `),
+
+      "04-trade-detail": () => shell({
+        title: "Trade Detail",
+        subtitle: "A single execution with every audit fact in one scroll.",
+        action: "#2819",
+        active: "Trades"
+      }, `
+        <div class="stack">
+          <div class="hero-metric">
+            <div class="hero-row">
+              <div>
+                <span class="badge buy">BUY</span>
+                <div class="hero-price" style="font-size:30px;margin-top:12px">12.4200 XRP</div>
+                <div class="small">Executed by AI at 14:06:23</div>
+              </div>
+              <span class="pill green">Filled</span>
+            </div>
+          </div>
+          <div class="grid2">
+            ${metric("Price", "$0.586218", "per XRP")}
+            ${metric("Value", "$7.28", "notional")}
+            ${metric("Fee", "$0.0073", "taker")}
+            ${metric("USD After", "$2,104.93", "cash balance")}
+          </div>
+          <div class="panel">
+            <div class="section-head"><h2>AI Rationale</h2><span class="pill cyan">92%</span></div>
+            <div class="small">Momentum improved while drawdown stayed under the risk limit. Position size was capped by max trade percentage.</div>
+          </div>
+          <div class="panel">
+            <div class="section-head"><h2>Timeline</h2></div>
+            <div class="timeline">
+              <div class="timeline-item"><span class="dot"></span><div><div class="row-title">Decision created</div><div class="row-sub">Prompt sent to selected model</div></div></div>
+              <div class="timeline-item"><span class="dot"></span><div><div class="row-title">Risk check passed</div><div class="row-sub">Trade below daily and position caps</div></div></div>
+              <div class="timeline-item"><span class="dot"></span><div><div class="row-title">Order recorded</div><div class="row-sub">Portfolio balances updated</div></div></div>
+            </div>
+          </div>
+        </div>
+      `),
+
+      "05-ai-decisions": () => shell({
+        title: "AI Decisions",
+        subtitle: "Decision log with the trigger action visible but guarded.",
+        action: "Trigger",
+        actionClass: "primary",
+        active: "AI"
+      }, `
+        <div class="stack">
+          <div class="grid3">
+            ${metric("Buy", "18", "this page", "tone-green")}
+            ${metric("Sell", "7", "this page", "tone-red")}
+            ${metric("Hold", "12", "this page")}
+          </div>
+          <div class="panel">
+            <div class="section-head"><h2>Distribution</h2><span class="small">37 decisions</span></div>
+            <div class="dist"><span></span><span></span><span></span></div>
+            <div class="small" style="margin-top:8px">48% buy, 24% sell, 28% hold - 21 executed</div>
+          </div>
+          <div class="segmented"><span class="active">All</span><span>Buy</span><span>Sell</span><span>Hold</span></div>
+          ${row("BUY", "Decision #884", "92% confidence - executed", "12.42 XRP", "gpt-4o", "buy")}
+          ${row("HOLD", "Decision #883", "68% confidence - skipped", "No order", "risk guard", "hold")}
+          ${row("SELL", "Decision #882", "81% confidence - executed", "8.00 XRP", "profit take", "sell")}
+          ${row("BUY", "Decision #881", "74% confidence - failed", "Retry queued", "size corrected", "buy")}
+        </div>
+      `),
+
+      "06-ai-detail": () => shell({
+        title: "Decision Detail",
+        subtitle: "Reasoning first, raw prompt tucked behind tabs.",
+        action: "BUY",
+        actionClass: "primary",
+        active: "AI"
+      }, `
+        <div class="stack">
+          <div class="hero-metric">
+            <div class="hero-row">
+              <div>
+                <div class="label">Decision #884</div>
+                <div class="hero-price" style="font-size:32px">92%</div>
+                <div class="small">confidence - executed</div>
+              </div>
+              <span class="pill green">Trade filled</span>
+            </div>
+          </div>
+          <div class="segmented"><span>Prompt</span><span class="active">Response</span><span>Info</span></div>
+          <div class="grid2">
+            ${metric("Action", "BUY", "model output", "tone-green")}
+            ${metric("Amount", "12.42", "XRP")}
+            ${metric("Tokens", "3,918", "2,864 in / 1,054 out")}
+            ${metric("Model", "gpt-4o", "configured provider")}
+          </div>
+          <div class="panel">
+            <div class="section-head"><h2>Reasoning</h2><span class="pill cyan">clean</span></div>
+            <div class="small">Price broke above the short window average while exposure remained under cap. Buy size was reduced to respect max trade percentage.</div>
+          </div>
+          <div class="panel">
+            <div class="section-head"><h2>Raw Response</h2><span class="pill">Collapsed</span></div>
+            <div class="codebox">{ "action": "BUY", "confidence": 0.92, "xrp_amount": 12.42, "reasoning": "momentum improved..." }</div>
+          </div>
+        </div>
+      `),
+
+      "07-monitor": () => shell({
+        title: "AI Monitor",
+        subtitle: "Prompt and response inspection adapted from split pane to mobile.",
+        action: "Live",
+        actionClass: "primary",
+        active: "Monitor"
+      }, `
+        <div class="stack">
+          <div class="panel">
+            <div class="section-head"><h2>Live Feed</h2><span class="pill cyan">884 decisions</span></div>
+            ${row("BUY", "#884", "14:06:23 - gpt-4o", "92%", "selected", "buy")}
+            ${row("HOLD", "#883", "13:42:09 - gpt-4o", "68%", "skipped", "hold")}
+          </div>
+          <div class="segmented"><span class="active">Prompt</span><span>Response</span><span>Info</span></div>
+          <div class="panel">
+            <div class="section-head"><h2>Prompt Snapshot</h2><span class="pill">Read only</span></div>
+            <div class="codebox">System: You are an XRP trading assistant.
+
+Market:
+- pair: XRP/USD
+- current_price: 0.586421
+- window: 50 prices
+
+Risk:
+- max trade: 8% cash
+- max position: 65%</div>
+          </div>
+          <div class="panel">
+            <div class="section-head"><h2>Response Summary</h2><span class="pill green">valid JSON</span></div>
+            <div class="small">Action BUY, confidence 92%, suggested amount 12.42 XRP. Trade executed after risk clamp.</div>
+          </div>
+        </div>
+      `),
+
+      "08-backtest-setup": () => shell({
+        title: "Backtest",
+        subtitle: "Configuration is stepwise so the form is usable one-handed.",
+        action: "Run",
+        actionClass: "primary",
+        active: "Test"
+      }, `
+        <div class="stack">
+          <div class="panel stack">
+            <div class="section-head"><h2>Period</h2><span class="pill">30 days</span></div>
+            <div class="grid2">
+              <div class="form-row"><span class="label">Start</span><div class="input-like">Apr 6, 09:41</div></div>
+              <div class="form-row"><span class="label">End</span><div class="input-like">May 6, 09:41</div></div>
+            </div>
+          </div>
+          <div class="panel stack">
+            <div class="section-head"><h2>Capital & Fees</h2></div>
+            <div class="form-row"><span class="label">Initial Capital</span><div class="input-like">$10,000 USD</div></div>
+            <div class="grid2">
+              <div class="form-row"><span class="label">Maker</span><div class="input-like">0.10%</div></div>
+              <div class="form-row"><span class="label">Taker</span><div class="input-like">0.10%</div></div>
+            </div>
+          </div>
+          <div class="panel stack">
+            <div class="section-head"><h2>Strategy</h2><span class="pill amber">Cost control</span></div>
+            <div class="segmented"><span class="active">Random</span><span>AI Model</span></div>
+            <div class="form-row"><span class="label">Decisions Per Hour</span><div class="input-like">12 <span class="small">balanced</span></div></div>
+            <div class="form-row"><span class="label">Price Window</span><div class="input-like">50 points</div></div>
+          </div>
+          <div class="top-action primary" style="height:48px;width:100%;font-size:14px">Run Backtest</div>
+        </div>
+      `),
+
+      "09-backtest-results": () => shell({
+        title: "Results",
+        subtitle: "Outcome metrics, equity curve, and run history in one pass.",
+        action: "Done",
+        active: "Test"
+      }, `
+        <div class="stack">
+          <div class="grid3">
+            ${metric("Return", "+12.8%", "total", "tone-green")}
+            ${metric("Sharpe", "1.42", "ratio", "tone-cyan")}
+            ${metric("Drawdown", "-4.1%", "max", "tone-red")}
+          </div>
+          <div class="grid3">
+            ${metric("Win", "61.7%", "rate")}
+            ${metric("Trades", "84", "total")}
+            ${metric("Final", "$11,280", "value")}
+          </div>
+          <div class="panel">
+            <div class="section-head"><h2>Equity Curve</h2><span class="pill green">+12.8%</span></div>
+            ${chart("#59c7e8", "rgba(89,199,232,0.16)")}
+          </div>
+          <div class="panel stack">
+            <div class="section-head"><h2>Run History</h2><span class="small">recent</span></div>
+            ${row("", "May 6 - AI model", "$10,000 initial - 30 days", "+12.8%", "done")}
+            ${row("", "May 5 - random engine", "$10,000 initial - 14 days", "-0.4%", "done")}
+            ${row("", "May 4 - AI model", "$5,000 initial - 7 days", "error", "key missing")}
+          </div>
+        </div>
+      `),
+
+      "10-admin": () => shell({
+        title: "Admin",
+        subtitle: "Settings grouped by task with live trading guarded.",
+        action: "Paper",
+        active: "Admin"
+      }, `
+        <div class="stack">
+          <div class="panel">
+            <div class="section-head"><h2>Trading Mode</h2><span class="pill amber">Paper active</span></div>
+            <div class="segmented"><span class="active">Paper</span><span>Live</span></div>
+            <div class="small" style="margin-top:8px">Live mode should require confirmation after exchange test passes.</div>
+          </div>
+          <div class="panel stack">
+            <div class="section-head"><h2>Exchange & Data</h2><span class="pill green">Connected</span></div>
+            ${row("", "Kraken connection", "Last test 2 min ago", "OK", "USD + XRP")}
+            ${row("", "Quote currency", "Display and account base", "USD", "editable")}
+          </div>
+          <div class="panel stack">
+            <div class="section-head"><h2>Risk Controls</h2><span class="pill amber">Required</span></div>
+            <div class="form-row"><span class="label">Max Trade</span><div class="slider"><span style="width:38%"></span></div><div class="small">8% of available cash</div></div>
+            <div class="form-row"><span class="label">Max Position</span><div class="slider"><span style="width:65%"></span></div><div class="small">65% account value</div></div>
+            <div class="form-row"><span class="label">Max Daily Trades</span><div class="input-like">7 trades</div></div>
+          </div>
+          <div class="panel">
+            <div class="section-head"><h2>Danger Actions</h2><span class="pill red">Collapsed</span></div>
+            <div class="small">Reset, seed, and clear actions stay behind a secondary disclosure. They are not part of the main mobile path.</div>
+          </div>
+        </div>
+      `),
+    };
+
+    const params = new URLSearchParams(location.search);
+    const screen = params.get("screen") || "01-dashboard";
+    document.getElementById("app").innerHTML = (screens[screen] || screens["01-dashboard"])();
+  </script>
+</body>
+</html>

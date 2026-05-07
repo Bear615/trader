@@ -54,7 +54,7 @@ const krakenTestLoading = ref(false)
 const krakenSyncLoading = ref(false)
 
 const isLiveMode = computed(() => settingsStore.settings['trading_mode'] === 'live')
-const quoteCurrency = computed(() => String(settingsStore.settings['quote_currency'] || 'USD').toUpperCase())
+const quoteCurrency = computed(() => String(settingsStore.settings['quote_currency'] || 'GBP').toUpperCase())
 const quoteSymbol = computed(() => currencySymbol(quoteCurrency.value))
 const livePrice = computed(() =>
   priceStore.current ? `${quoteSymbol.value}${priceStore.current.price.toFixed(6)}` : '-'
@@ -119,10 +119,10 @@ async function saveSetting(key: string, value: unknown) {
 // Trading mode toggle
 function requestModeToggle() {
   if (!isLiveMode.value) {
-    // Switching to live — require confirmation
+    // Switching to live requires confirmation.
     showLiveConfirmModal.value = true
   } else {
-    // Switching back to paper — no confirmation needed
+    // Switching back to paper does not require confirmation.
     saveSetting('trading_mode', 'paper')
   }
 }
@@ -272,8 +272,7 @@ async function clearTrades() {
           <!-- Header -->
           <div class="flex flex-col items-center gap-2">
             <div class="relative mb-1">
-              <div class="absolute inset-0 rounded-2xl blur-md" style="background: rgba(245,158,11,0.20);" />
-              <div class="relative w-14 h-14 rounded-2xl flex items-center justify-center" style="background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.30);">
+              <div class="relative w-14 h-14 rounded-lg flex items-center justify-center" style="background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.30);">
                 <svg class="w-7 h-7 text-amber-400" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
@@ -317,15 +316,15 @@ async function clearTrades() {
               @click="key !== '' ? loginPressKey(key) : undefined"
               :disabled="loginLocked || key === ''"
               :class="[
-                'h-14 rounded-2xl text-sm font-semibold transition-all duration-150 select-none',
+                'h-14 rounded-lg text-sm font-semibold transition-all duration-150 select-none',
                 key === ''
                   ? 'invisible'
-                  : key === '⌫'
+                  : key === 'Del'
                     ? 'text-gray-400 hover:text-gray-200 active:scale-95'
                     : 'text-gray-100 active:scale-95',
                 loginLocked ? 'opacity-40 cursor-not-allowed' : key !== '' ? 'cursor-pointer' : ''
               ]"
-              :style="key === '' ? '' : key === '⌫'
+              :style="key === '' ? '' : key === 'Del'
                 ? 'background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);'
                 : 'background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.09); box-shadow: 0 1px 0 rgba(255,255,255,0.05) inset;'"
             >
@@ -604,9 +603,9 @@ async function clearTrades() {
   <!-- Live mode confirmation modal -->
   <Teleport to="body">
     <div v-if="showLiveConfirmModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div class="w-full max-w-md mx-4 rounded-2xl border border-amber-500/40 bg-[#0f0f12] shadow-2xl p-6 space-y-5">
+      <div class="w-full max-w-md mx-4 rounded-lg border border-amber-500/40 bg-[#0f0f12] shadow-2xl p-6 space-y-5">
         <div class="flex items-start gap-3">
-          <div class="w-10 h-10 rounded-xl bg-red-500/15 border border-red-500/30 flex items-center justify-center flex-shrink-0">
+          <div class="w-10 h-10 rounded-lg bg-red-500/15 border border-red-500/30 flex items-center justify-center flex-shrink-0">
             <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.07 16.5c-.77.833.192 2.5 1.732 2.5z" />
             </svg>

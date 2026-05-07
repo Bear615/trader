@@ -20,27 +20,32 @@ const formattedPrice = computed(() =>
   priceStore.current ? quoteSymbol.value + priceStore.current.price.toFixed(6) : 'Waiting for price'
 )
 
-const marketStatus = computed(() => priceStore.connected ? 'Market Open' : 'Feed Offline')
+const marketStatus = computed(() => priceStore.connected ? 'Live price' : 'Feed offline')
 </script>
 
 <template>
-  <header class="flex min-h-[73px] flex-shrink-0 items-center border-b border-slate-800/70 bg-[#01040a]/82 px-5 backdrop-blur-xl md:px-8">
-    <div class="flex w-full items-center justify-between gap-4">
-      <div class="flex min-w-0 items-center gap-5 text-sm md:text-base">
-        <div class="font-semibold text-slate-300">XRP/{{ quoteCurrency }}</div>
-        <div class="h-7 w-px bg-slate-700/70" />
-        <div class="flex items-center gap-2 font-bold text-amber-300">
-          <span class="h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.7)]" />
-          {{ isLiveMode ? 'LIVE' : 'PAPER' }}
+  <header class="flex min-h-[68px] flex-shrink-0 items-center border-b border-slate-800/80 bg-[#070b10]/94 px-4 pt-[env(safe-area-inset-top)] backdrop-blur md:min-h-[73px] md:px-8">
+    <div class="flex w-full items-center justify-between gap-3">
+      <div class="min-w-0">
+        <div class="flex items-center gap-2 text-xs font-semibold text-slate-400">
+          <span class="text-slate-200">XRP/{{ quoteCurrency }}</span>
+          <span class="h-1 w-1 rounded-full bg-slate-600" />
+          <span class="flex items-center gap-1.5" :class="isLiveMode ? 'text-rose-300' : 'text-amber-300'">
+            <span class="h-1.5 w-1.5 rounded-full" :class="isLiveMode ? 'bg-rose-400' : 'bg-amber-400'" />
+            {{ isLiveMode ? 'LIVE' : 'PAPER' }}
+          </span>
         </div>
-        <div class="truncate text-lg font-bold tracking-[-0.02em] text-slate-50 md:text-xl">
+        <div class="mt-1 truncate text-xl font-bold text-slate-50 md:text-2xl">
           <NumberTicker :value="formattedPrice" />
         </div>
       </div>
 
-      <div class="status-pill hidden sm:inline-flex">
-        <span class="status-dot" :class="priceStore.connected ? 'bg-emerald-400' : 'bg-rose-400'" />
-        {{ marketStatus }}
+      <div class="flex flex-col items-end gap-1">
+        <div class="app-chip" :class="priceStore.connected ? 'border-emerald-400/25 text-emerald-300' : 'border-rose-400/25 text-rose-300'">
+          <span class="status-dot" :class="priceStore.connected ? 'bg-emerald-400' : 'bg-rose-400'" />
+          {{ marketStatus }}
+        </div>
+        <div class="hidden text-[11px] text-slate-500 sm:block">Quote: {{ quoteCurrency }}</div>
       </div>
     </div>
   </header>

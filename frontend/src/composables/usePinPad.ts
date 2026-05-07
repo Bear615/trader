@@ -1,13 +1,14 @@
 import { ref } from 'vue'
 
-export const NUMPAD_KEYS = [1, 2, 3, 4, 5, 6, 7, 8, 9, '', 0, '⌫'] as const
+export const PIN_DELETE_KEY = 'Del'
+export const NUMPAD_KEYS = [1, 2, 3, 4, 5, 6, 7, 8, 9, '', 0, PIN_DELETE_KEY] as const
 
 export function usePinPad(pinLength: number, onComplete: (pin: string) => void) {
   const pin = ref('')
   const shaking = ref(false)
 
   function pressKey(key: string | number) {
-    if (key === '⌫') {
+    if (key === PIN_DELETE_KEY) {
       pin.value = pin.value.slice(0, -1)
       return
     }

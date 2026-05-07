@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useAIStore } from '@/stores/ai'
 import type { AIDecision } from '@/api/types'
-import { formatDate } from '@/utils/format'
+import { formatDate, formatNumber } from '@/utils/format'
 
 const aiStore = useAIStore()
 
@@ -16,20 +16,32 @@ onMounted(async () => {
   if (aiStore.items.length) selected.value = aiStore.items[0]
 })
 
+watch(() => aiStore.items, (items) => {
+  if (!selected.value && items.length) selected.value = items[0]
+})
+
 function selectDecision(d: AIDecision) {
   selected.value = d
   tab.value = 'input'
   showRawResponse.value = false
 }
 
-function fmt(ts: string) {
-  return formatDate(ts)
+function actionClass(action: string) {
+  if (action === 'BUY') return 'border-emerald-400/25 bg-emerald-500/10 text-emerald-300'
+  if (action === 'SELL') return 'border-rose-400/25 bg-rose-500/10 text-rose-300'
+  return 'border-slate-500/30 bg-slate-500/10 text-slate-300'
 }
 
-function actionColor(a: string) {
-  if (a === 'BUY') return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/25'
-  if (a === 'SELL') return 'text-rose-400 bg-rose-500/10 border-rose-500/25'
-  return 'text-gray-400 border-white/[0.12]' + '; background: rgba(255,255,255,0.07)'
+function executionClass(decision: AIDecision) {
+  if (decision.executed) return 'border-emerald-400/25 bg-emerald-500/10 text-emerald-300'
+  if (decision.execution_error) return 'border-rose-400/25 bg-rose-500/10 text-rose-300'
+  return 'border-slate-500/30 bg-slate-500/10 text-slate-400'
+}
+
+function executionLabel(decision: AIDecision) {
+  if (decision.executed) return 'Executed'
+  if (decision.execution_error) return 'Error'
+  return 'Skipped'
 }
 
 const confidencePct = computed(() =>
@@ -42,198 +54,150 @@ const totalTokens = computed(() =>
 </script>
 
 <template>
-  <!-- Full-height split-pane layout (fills the padded main area) -->
-  <div class="view-shell flex h-[calc(100vh-9rem)] min-h-[520px] flex-col">
-    <!-- Page header -->
-    <div class="flex items-center gap-4 pb-4 flex-shrink-0">
+  <div class="view-shell">
+    <div class="mobile-screen-header">
       <div>
+        <p class="view-kicker">Inspector</p>
         <h1 class="view-title">AI Monitor</h1>
-        <p class="view-subtitle">Live feed of every prompt sent to the model and its raw response.</p>
+        <p class="view-subtitle">Prompt, response, and execution telemetry adapted for mobile review.</p>
       </div>
-      <div class="ml-auto flex items-center gap-2 text-xs text-gray-500">
-        <span class="relative flex h-2 w-2">
-          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
-          <span class="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
-        </span>
-        Live &nbsp;·&nbsp; {{ aiStore.total }} decisions
-      </div>
+      <span class="app-chip border-emerald-400/25 text-emerald-300">
+        <span class="status-dot bg-emerald-400" />
+        Live
+      </span>
     </div>
 
-    <!-- Split pane -->
-    <div class="flex flex-1 min-h-0 rounded-2xl overflow-hidden" style="background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%); border: 1px solid rgba(255,255,255,0.09); backdrop-filter: blur(22px) saturate(160%);">  
-      <!-- Left: decision list -->
-      <div class="w-72 flex-shrink-0 overflow-y-auto flex flex-col" style="border-right: 1px solid rgba(255,255,255,0.07); background: rgba(0,0,0,0.2);">
-        <div
-          v-if="aiStore.loading && !aiStore.items.length"
-          class="flex-1 flex items-center justify-center text-gray-600 text-sm"
-        >Loading…</div>
-        <div
-          v-else-if="!aiStore.items.length"
-          class="flex-1 flex items-center justify-center text-gray-600 text-sm px-4 text-center"
-        >
-          No decisions yet.<br />Trigger one from the Admin panel.
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
+      <section class="panel max-h-[360px] overflow-hidden p-0 lg:max-h-[calc(100vh-13rem)]">
+        <div class="flex items-center justify-between border-b border-slate-800/80 px-4 py-3">
+          <h2 class="section-title">Live Feed</h2>
+          <span class="text-xs text-slate-500">{{ aiStore.total }} decisions</span>
         </div>
-        <button
-          v-for="d in aiStore.items"
-          :key="d.id"
-          class="w-full text-left px-4 py-3 transition-colors flex-shrink-0"
-          :class="selected?.id === d.id ? 'border-l-2 border-l-sky-500' : ''"
-          :style="selected?.id === d.id ? 'background: rgba(14,165,233,0.10); border-bottom: 1px solid rgba(255,255,255,0.05);' : 'border-bottom: 1px solid rgba(255,255,255,0.05); border-left: 2px solid transparent;'"
-          @mouseenter="e => { if (selected?.id !== d.id) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)'; }"
-          @mouseleave="e => { if (selected?.id !== d.id) (e.currentTarget as HTMLElement).style.background = ''; }"
-          @click="selectDecision(d)"
-        >
-          <div class="flex items-center gap-2 mb-1.5">
-            <span
-              class="px-1.5 py-0.5 rounded text-[10px] font-bold border"
-              :class="actionColor(d.action)"
-            >{{ d.action }}</span>
-            <span class="text-[10px] text-gray-500 ml-auto tabular-nums">{{ fmt(d.timestamp) }}</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <div class="flex-1 bg-surface-700 rounded-full h-1 overflow-hidden">
-              <div
-                class="h-1 rounded-full"
-                :class="d.action === 'BUY' ? 'bg-emerald-500' : d.action === 'SELL' ? 'bg-rose-500' : 'bg-sky-500'"
-                :style="{ width: Math.round((d.confidence ?? 0) * 100) + '%' }"
-              ></div>
-            </div>
-            <span class="text-[10px] text-gray-500 tabular-nums">{{ Math.round((d.confidence ?? 0) * 100) }}%</span>
-          </div>
-          <div class="mt-1 text-[10px] text-gray-600 truncate">{{ d.model_used ?? 'unknown model' }}</div>
-        </button>
-      </div>
-
-      <!-- Right: inspector -->
-      <div v-if="selected" class="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <!-- Inspector header -->
-        <div class="px-5 py-3 border-b border-surface-700 flex items-center gap-3 flex-shrink-0 bg-surface-900">
-          <span
-            class="px-2 py-0.5 rounded text-xs font-bold border"
-            :class="actionColor(selected.action)"
-          >{{ selected.action }}</span>
-          <span class="text-sm text-gray-300">Decision #{{ selected.id }}</span>
-          <span class="text-xs text-gray-500 tabular-nums">{{ fmt(selected.timestamp) }}</span>
-          <div class="ml-auto flex items-center gap-2">
-            <span v-if="selected.executed" class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">Executed</span>
-            <span v-else-if="selected.execution_error" class="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/25">Error</span>
-            <span v-else class="text-[10px] px-1.5 py-0.5 rounded bg-surface-700 text-gray-500 border border-surface-600">Not executed</span>
-          </div>
+        <div v-if="aiStore.loading && !aiStore.items.length" class="flex h-48 items-center justify-center text-sm text-slate-500">
+          Loading
         </div>
-
-        <!-- Tabs -->
-        <div class="px-5 pt-3 border-b border-surface-700 flex gap-1 flex-shrink-0 bg-surface-900">
+        <div v-else-if="!aiStore.items.length" class="flex h-48 items-center justify-center px-4 text-center text-sm text-slate-500">
+          No decisions yet. Trigger one from AI Decisions.
+        </div>
+        <div v-else class="max-h-[304px] overflow-y-auto lg:max-h-[calc(100vh-17rem)]">
           <button
-            v-for="t in (['input', 'output', 'info'] as const)"
-            :key="t"
-            class="px-3 py-2 text-xs font-medium transition-colors capitalize border-b-2 -mb-px"
-            :class="tab === t
-              ? 'text-sky-400 border-sky-500'
-              : 'text-gray-500 hover:text-gray-300 border-transparent'"
-            @click="tab = t"
-          >{{ t === 'input' ? 'Prompt' : t === 'output' ? 'Response' : 'Info' }}</button>
+            v-for="d in aiStore.items"
+            :key="d.id"
+            class="w-full border-b border-slate-800/75 px-4 py-3 text-left transition hover:bg-slate-900/50"
+            :class="selected?.id === d.id ? 'bg-blue-500/10' : ''"
+            @click="selectDecision(d)"
+          >
+            <div class="flex items-center gap-2">
+              <span class="badge" :class="actionClass(d.action)">{{ d.action }}</span>
+              <span class="ml-auto font-mono text-xs tabular-nums text-slate-500">{{ Math.round((d.confidence ?? 0) * 100) }}%</span>
+            </div>
+            <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-800">
+              <div
+                class="h-full rounded-full"
+                :class="d.action === 'BUY' ? 'bg-emerald-400' : d.action === 'SELL' ? 'bg-rose-400' : 'bg-blue-400'"
+                :style="{ width: Math.round((d.confidence ?? 0) * 100) + '%' }"
+              />
+            </div>
+            <div class="mt-2 flex items-center justify-between gap-3 text-[11px] text-slate-500">
+              <span class="truncate">{{ d.model_used ?? 'unknown model' }}</span>
+              <span class="shrink-0">{{ formatDate(d.timestamp) }}</span>
+            </div>
+          </button>
+        </div>
+      </section>
+
+      <section v-if="selected" class="panel overflow-hidden p-0">
+        <div class="border-b border-slate-800/80 p-4">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="badge" :class="actionClass(selected.action)">{{ selected.action }}</span>
+            <span class="badge" :class="executionClass(selected)">{{ executionLabel(selected) }}</span>
+            <span class="font-mono text-sm text-slate-300">Decision #{{ selected.id }}</span>
+            <span class="ml-auto text-xs text-slate-500">{{ formatDate(selected.timestamp) }}</span>
+          </div>
+
+          <div class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div class="card-sm">
+              <div class="stat-label">Confidence</div>
+              <div class="mt-1 font-mono text-xl font-bold tabular-nums text-blue-300">{{ confidencePct }}%</div>
+            </div>
+            <div class="card-sm">
+              <div class="stat-label">Amount</div>
+              <div class="mt-1 font-mono text-xl font-bold tabular-nums text-slate-50">
+                {{ selected.xrp_amount != null ? formatNumber(selected.xrp_amount, 4) : '-' }}
+              </div>
+            </div>
+            <div class="card-sm">
+              <div class="stat-label">Tokens</div>
+              <div class="mt-1 font-mono text-xl font-bold tabular-nums text-slate-50">{{ totalTokens.toLocaleString() }}</div>
+            </div>
+            <div class="card-sm">
+              <div class="stat-label">Model</div>
+              <div class="mt-1 truncate font-mono text-sm font-semibold text-slate-200">{{ selected.model_used ?? 'unknown' }}</div>
+            </div>
+          </div>
         </div>
 
-        <!-- Tab panels -->
-        <div class="flex-1 overflow-auto p-5 bg-surface-800">
-          <!-- PROMPT -->
+        <div class="border-b border-slate-800/80 px-4 pt-3">
+          <div class="segmented">
+            <button
+              v-for="t in (['input', 'output', 'info'] as const)"
+              :key="t"
+              class="segmented-button"
+              :class="{ 'segmented-button-active': tab === t }"
+              @click="tab = t"
+            >
+              {{ t === 'input' ? 'Prompt' : t === 'output' ? 'Response' : 'Info' }}
+            </button>
+          </div>
+        </div>
+
+        <div class="p-4">
           <div v-if="tab === 'input'">
-            <div
-              v-if="selected.raw_prompt"
-              class="bg-surface-900 border border-surface-700 rounded-xl p-4 font-mono text-xs text-gray-300 whitespace-pre-wrap leading-relaxed overflow-auto max-h-[calc(100%-2rem)]"
-            >{{ selected.raw_prompt }}</div>
-            <div v-else class="text-sm text-gray-600 italic">No prompt recorded for this decision.</div>
+            <pre v-if="selected.raw_prompt" class="max-h-[420px] overflow-auto whitespace-pre-wrap rounded-lg border border-slate-800 bg-slate-950/55 p-4 font-mono text-xs leading-relaxed text-slate-300">{{ selected.raw_prompt }}</pre>
+            <div v-else class="py-10 text-center text-sm text-slate-500">No prompt recorded for this decision.</div>
           </div>
 
-          <!-- RESPONSE -->
           <div v-else-if="tab === 'output'" class="space-y-4">
-            <div class="grid grid-cols-2 gap-3">
-              <div class="bg-surface-900 rounded-lg p-3 border border-surface-700">
-                <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Action</div>
-                <span class="px-2 py-0.5 rounded text-sm font-bold border" :class="actionColor(selected.action)">{{ selected.action }}</span>
-              </div>
-              <div class="bg-surface-900 rounded-lg p-3 border border-surface-700">
-                <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">XRP Amount</div>
-                <div class="text-sm text-gray-200 font-mono tabular-nums">
-                  {{ selected.xrp_amount != null ? selected.xrp_amount.toFixed(4) : '—' }}
-                </div>
-              </div>
-              <div class="bg-surface-900 rounded-lg p-3 border border-surface-700">
-                <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Confidence</div>
-                <div class="flex items-center gap-2">
-                  <div class="flex-1 bg-surface-700 rounded-full h-1.5 overflow-hidden">
-                    <div class="h-1.5 rounded-full bg-sky-500 transition-all" :style="{ width: confidencePct + '%' }"></div>
-                  </div>
-                  <span class="text-xs text-gray-300 font-mono tabular-nums">{{ confidencePct }}%</span>
-                </div>
-              </div>
-              <div class="bg-surface-900 rounded-lg p-3 border border-surface-700">
-                <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Tokens</div>
-                <div class="text-sm text-gray-200 font-mono tabular-nums">{{ totalTokens.toLocaleString() }}</div>
-                <div class="text-[10px] text-gray-600 mt-0.5 font-mono">
-                  {{ selected.prompt_tokens ?? 0 }} in · {{ selected.completion_tokens ?? 0 }} out
-                </div>
-              </div>
+            <div v-if="selected.reasoning" class="mobile-list-card">
+              <div class="stat-label">Reasoning</div>
+              <p class="mt-2 text-sm leading-relaxed text-slate-300">{{ selected.reasoning }}</p>
             </div>
 
-            <div v-if="selected.reasoning" class="bg-surface-900 rounded-lg p-4 border border-surface-700">
-              <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Reasoning</div>
-              <p class="text-sm text-gray-300 leading-relaxed">{{ selected.reasoning }}</p>
-            </div>
-
-            <div>
-              <button
-                class="text-xs text-sky-400 hover:text-sky-300 mb-2 flex items-center gap-1 transition-colors"
-                @click="showRawResponse = !showRawResponse"
-              >
-                <svg class="w-3.5 h-3.5 transition-transform duration-150" :class="showRawResponse ? 'rotate-90' : ''" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-                Raw response
-              </button>
-              <div
-                v-if="showRawResponse && selected.raw_response"
-                class="bg-surface-900 border border-surface-700 rounded-xl p-4 font-mono text-xs text-gray-400 whitespace-pre-wrap leading-relaxed overflow-auto max-h-64"
-              >{{ selected.raw_response }}</div>
-            </div>
+            <button
+              class="text-xs font-semibold text-blue-400 hover:text-blue-300"
+              @click="showRawResponse = !showRawResponse"
+            >
+              {{ showRawResponse ? 'Hide' : 'Show' }} raw response
+            </button>
+            <pre v-if="showRawResponse && selected.raw_response" class="max-h-72 overflow-auto whitespace-pre-wrap rounded-lg border border-slate-800 bg-slate-950/55 p-4 font-mono text-xs leading-relaxed text-slate-400">{{ selected.raw_response }}</pre>
           </div>
 
-          <!-- INFO -->
-          <div v-else-if="tab === 'info'">
-            <dl class="space-y-0">
-              <div
-                v-for="row in [
-                  { label: 'Decision ID', value: String(selected.id) },
-                  { label: 'Model', value: selected.model_used ?? 'unknown' },
-                  { label: 'Timestamp', value: fmt(selected.timestamp) },
-                  { label: 'Executed', value: selected.executed ? 'Yes' : 'No' },
-                  { label: 'Execution error', value: selected.execution_error ?? '—' },
-                  { label: 'Prompt tokens', value: selected.prompt_tokens != null ? String(selected.prompt_tokens) : '—' },
-                  { label: 'Completion tokens', value: selected.completion_tokens != null ? String(selected.completion_tokens) : '—' },
-                  { label: 'Total tokens', value: totalTokens > 0 ? String(totalTokens) : '—' },
-                ]"
-                :key="row.label"
-                class="flex items-center justify-between py-2.5 border-b border-surface-700/60 gap-4 last:border-0"
-              >
-                <dt class="text-xs text-gray-500">{{ row.label }}</dt>
-                <dd
-                  class="text-xs font-mono text-right"
-                  :class="row.label === 'Execution error' && row.value !== '—' ? 'text-rose-400' : 'text-gray-300'"
-                >{{ row.value }}</dd>
-              </div>
-            </dl>
-          </div>
+          <dl v-else class="space-y-0">
+            <div class="mobile-detail-row">
+              <dt class="mobile-detail-label">Decision ID</dt>
+              <dd class="mobile-detail-value">#{{ selected.id }}</dd>
+            </div>
+            <div class="mobile-detail-row">
+              <dt class="mobile-detail-label">Prompt tokens</dt>
+              <dd class="mobile-detail-value">{{ selected.prompt_tokens ?? '-' }}</dd>
+            </div>
+            <div class="mobile-detail-row">
+              <dt class="mobile-detail-label">Completion tokens</dt>
+              <dd class="mobile-detail-value">{{ selected.completion_tokens ?? '-' }}</dd>
+            </div>
+            <div class="mobile-detail-row">
+              <dt class="mobile-detail-label">Execution error</dt>
+              <dd class="mobile-detail-value" :class="selected.execution_error ? 'text-rose-400' : ''">
+                {{ selected.execution_error ?? '-' }}
+              </dd>
+            </div>
+          </dl>
         </div>
-      </div>
+      </section>
 
-      <!-- Empty right panel -->
-      <div
-        v-else
-        class="flex-1 flex items-center justify-center text-gray-600 text-sm select-none"
-      >
-        ← Select a decision to inspect
-      </div>
+      <section v-else class="panel flex min-h-[360px] items-center justify-center text-sm text-slate-500">
+        Select a decision to inspect
+      </section>
     </div>
   </div>
 </template>
-

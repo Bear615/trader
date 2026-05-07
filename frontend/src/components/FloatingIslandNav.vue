@@ -57,23 +57,19 @@ onMounted(() => {
   <Transition name="island-entry">
     <nav
       v-if="visible"
-      class="fixed bottom-5 left-1/2 z-50 md:hidden"
+      class="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-50 md:hidden"
       style="transform: translateX(-50%)"
       aria-label="Mobile navigation"
     >
-      <!-- Outer glow ring -->
       <div class="island-glow-ring" />
 
-      <!-- Glass island pill -->
       <div class="island-pill">
 
-        <!-- Sliding amber indicator -->
         <div
           class="island-indicator"
           :style="{ transform: `translateX(calc(${activeIndex} * var(--item-w)))` }"
         />
 
-        <!-- Nav items -->
         <RouterLink
           v-for="(item, idx) in nav"
           :key="item.to"
@@ -90,7 +86,6 @@ onMounted(() => {
           </span>
           <span class="island-label">{{ item.name }}</span>
 
-          <!-- Admin badge -->
           <span
             v-if="item.name === 'Admin' && settingsStore.isAdmin"
             class="island-admin-dot"
@@ -103,7 +98,6 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* ── Outer ambient glow ── */
 .island-glow-ring {
   position: absolute;
   inset: -6px;
@@ -113,22 +107,19 @@ onMounted(() => {
   animation: island-breathe 4s ease-in-out infinite;
 }
 
-/* ── Main pill container ── */
 .island-pill {
-  --item-w: 52px;
+  --item-w: clamp(46px, 13.1vw, 52px);
   position: relative;
   display: flex;
   align-items: center;
   gap: 0;
-  padding: 6px 8px;
+  padding: 6px clamp(5px, 2vw, 8px);
   border-radius: 9999px;
 
-  /* Liquid-glass background */
   background: rgba(24, 24, 27, 0.72);
   backdrop-filter: blur(28px) saturate(180%);
   -webkit-backdrop-filter: blur(28px) saturate(180%);
 
-  /* Layered borders & shadows for depth */
   border: 1px solid rgba(255, 255, 255, 0.10);
   box-shadow:
     0 0 0 0.5px rgba(255, 255, 255, 0.06) inset,
@@ -138,10 +129,9 @@ onMounted(() => {
     0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
-/* ── Sliding amber indicator behind active item ── */
 .island-indicator {
   position: absolute;
-  left: 8px;
+  left: clamp(5px, 2vw, 8px);
   top: 6px;
   bottom: 6px;
   width: var(--item-w, 52px);
@@ -149,12 +139,10 @@ onMounted(() => {
   background: rgba(245, 158, 11, 0.16);
   border: 1px solid rgba(245, 158, 11, 0.28);
   box-shadow: 0 0 16px rgba(245, 158, 11, 0.2), inset 0 1px 0 rgba(245, 158, 11, 0.2);
-  /* Spring slide */
   transition: transform 0.48s cubic-bezier(0.34, 1.56, 0.64, 1);
   pointer-events: none;
 }
 
-/* ── Individual nav items ── */
 .island-item {
   position: relative;
   z-index: 1;
@@ -168,7 +156,6 @@ onMounted(() => {
   border-radius: 9999px;
   color: rgb(113, 113, 122); /* zinc-500 */
   text-decoration: none;
-  /* Spring scale */
   transition:
     color 0.3s ease,
     transform 0.48s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -185,7 +172,6 @@ onMounted(() => {
   transform: scale(1.08);
 }
 
-/* ── Icon wrapper ── */
 .island-icon-wrap {
   display: flex;
   align-items: center;
@@ -197,7 +183,6 @@ onMounted(() => {
   filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.5));
 }
 
-/* ── Label ── */
 .island-label {
   font-size: 8px;
   font-weight: 600;
@@ -210,7 +195,6 @@ onMounted(() => {
   opacity: 0.55;
 }
 
-/* ── Admin presence dot ── */
 .island-admin-dot {
   position: absolute;
   top: 4px;
@@ -223,7 +207,6 @@ onMounted(() => {
   animation: island-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
-/* ── Entry animation ── */
 .island-entry-enter-active {
   transition: opacity 0.5s ease, transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -239,7 +222,6 @@ onMounted(() => {
   transform: translateX(-50%) translateY(16px) scale(0.9);
 }
 
-/* ── Keyframes ── */
 @keyframes island-breathe {
   0%, 100% { opacity: 0.6; transform: scale(1); }
   50%       { opacity: 1;   transform: scale(1.04); }

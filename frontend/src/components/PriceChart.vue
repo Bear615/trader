@@ -72,7 +72,7 @@ const chartOptions = computed(() => ({
 
 const series = computed(() => [
   {
-    name: `XRP/${props.quoteCurrency ?? 'USD'}`,
+    name: `XRP/${props.quoteCurrency ?? 'GBP'}`,
     data: props.data.map((p) => [new Date(p.timestamp).getTime(), p.price]),
   },
 ])
