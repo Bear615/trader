@@ -27,6 +27,46 @@ const strategyMode = ref<'random' | 'ai'>('random')
 const customModel = ref('gpt-4o')
 const quoteCurrency = computed(() => currencyCode(settingsStore.settings['quote_currency']))
 
+const equityPoints = computed(() => {
+  const curve = activeResult.value?.result?.equity_curve ?? []
+  return curve
+    .map((p) => ({ time: new Date(p.timestamp).getTime(), value: Number(p.value) }))
+    .filter((p) => Number.isFinite(p.time) && Number.isFinite(p.value))
+    .sort((a, b) => a.time - b.time)
+})
+
+const equityBounds = computed(() => {
+  const values = equityPoints.value.map((p) => p.value)
+  if (!values.length) return undefined
+
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  const range = max - min
+  const fallbackPadding = Math.max(Math.abs(max) * 0.015, 1)
+  const padding = range > 0 ? Math.max(range * 0.16, fallbackPadding) : fallbackPadding
+
+  return {
+    min: Math.max(0, min - padding),
+    max: max + padding,
+  }
+})
+
+const equityTimeBounds = computed(() => {
+  const points = equityPoints.value
+  if (!points.length) return undefined
+  if (points.length === 1) {
+    const padding = 60 * 60 * 1000
+    return {
+      min: points[0].time - padding,
+      max: points[0].time + padding,
+    }
+  }
+  return {
+    min: points[0].time,
+    max: points[points.length - 1].time,
+  }
+})
+
 onMounted(async () => {
   const now = new Date()
   const from = new Date(now)
@@ -71,19 +111,26 @@ const equityChartOptions = computed(() => ({
   },
   xaxis: {
     type: 'datetime',
+    min: equityTimeBounds.value?.min,
+    max: equityTimeBounds.value?.max,
     labels: { style: { colors: '#8b98a8', fontSize: '11px' }, datetimeUTC: false },
     axisBorder: { show: false },
     axisTicks: { show: false },
   },
-  yaxis: { labels: { style: { colors: '#8b98a8', fontSize: '11px' }, formatter: (v: number) => formatCurrency(v, quoteCurrency.value, 0) } },
+  yaxis: {
+    min: equityBounds.value?.min,
+    max: equityBounds.value?.max,
+    tickAmount: 4,
+    forceNiceScale: false,
+    labels: { style: { colors: '#8b98a8', fontSize: '11px' }, formatter: (v: number) => formatCurrency(v, quoteCurrency.value, 0) },
+  },
   grid: { borderColor: 'rgba(148,163,184,0.12)', strokeDashArray: 4 },
   tooltip: { x: { format: 'dd MMM HH:mm' }, y: { formatter: (v: number) => formatCurrency(v, quoteCurrency.value, 2) } },
   dataLabels: { enabled: false },
 }))
 
 const equitySeries = computed(() => {
-  const curve = activeResult.value?.result?.equity_curve ?? []
-  return [{ name: 'Portfolio Value', data: curve.map((p) => [new Date(p.timestamp).getTime(), p.value]) }]
+  return [{ name: 'Portfolio Value', data: equityPoints.value.map((p) => [p.time, p.value]) }]
 })
 
 function statusBadge(s: string) {
