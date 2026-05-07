@@ -2,7 +2,7 @@
 import { onMounted, ref, computed } from 'vue'
 import { useBacktestStore } from '@/stores/backtest'
 import { useSettingsStore } from '@/stores/settings'
-import { currencyCode, currencySymbol } from '@/utils/format'
+import { currencyCode, formatCurrency, formatDate, formatNumber, formatPercent } from '@/utils/format'
 import type { BacktestRun } from '@/api/types'
 
 const store = useBacktestStore()
@@ -23,11 +23,9 @@ const form = ref({
   ai_model: 'random',
 })
 
-// Separate strategy mode from the freeform model name so the form stays clean
 const strategyMode = ref<'random' | 'ai'>('random')
 const customModel = ref('gpt-4o')
 const quoteCurrency = computed(() => currencyCode(settingsStore.settings['quote_currency']))
-const quoteSymbol = computed(() => currencySymbol(quoteCurrency.value))
 
 onMounted(async () => {
   const now = new Date()
@@ -36,6 +34,7 @@ onMounted(async () => {
   form.value.end_date = now.toISOString().slice(0, 16)
   form.value.start_date = from.toISOString().slice(0, 16)
   await store.fetchRuns()
+  activeResult.value = store.runs.find((run) => run.status === 'done' && run.result) ?? null
 })
 
 async function runBacktest() {
@@ -61,22 +60,24 @@ async function runBacktest() {
 
 const equityChartOptions = computed(() => ({
   chart: { type: 'area', background: 'transparent', toolbar: { show: false }, animations: { enabled: false } },
-  stroke: { curve: 'smooth', width: 2, colors: ['#10b981'] },
+  stroke: { curve: 'smooth', width: 2, colors: ['#38bdf8'] },
   fill: {
     type: 'gradient',
     gradient: {
-      opacityFrom: 0.25, opacityTo: 0.0,
-      colorStops: [{ offset: 0, color: '#10b981', opacity: 0.25 }, { offset: 100, color: '#10b981', opacity: 0 }],
+      opacityFrom: 0.22,
+      opacityTo: 0,
+      colorStops: [{ offset: 0, color: '#38bdf8', opacity: 0.22 }, { offset: 100, color: '#38bdf8', opacity: 0 }],
     },
   },
   xaxis: {
     type: 'datetime',
-    labels: { style: { colors: '#6b7280', fontSize: '11px' }, datetimeUTC: false },
-    axisBorder: { show: false }, axisTicks: { show: false },
+    labels: { style: { colors: '#8b98a8', fontSize: '11px' }, datetimeUTC: false },
+    axisBorder: { show: false },
+    axisTicks: { show: false },
   },
-  yaxis: { labels: { style: { colors: '#6b7280', fontSize: '11px' }, formatter: (v: number) => quoteSymbol.value + v.toFixed(0) } },
-  grid: { borderColor: '#21262d', strokeDashArray: 4 },
-  tooltip: { x: { format: 'dd MMM HH:mm' }, y: { formatter: (v: number) => quoteSymbol.value + v.toFixed(2) } },
+  yaxis: { labels: { style: { colors: '#8b98a8', fontSize: '11px' }, formatter: (v: number) => formatCurrency(v, quoteCurrency.value, 0) } },
+  grid: { borderColor: 'rgba(148,163,184,0.12)', strokeDashArray: 4 },
+  tooltip: { x: { format: 'dd MMM HH:mm' }, y: { formatter: (v: number) => formatCurrency(v, quoteCurrency.value, 2) } },
   dataLabels: { enabled: false },
 }))
 
@@ -86,42 +87,51 @@ const equitySeries = computed(() => {
 })
 
 function statusBadge(s: string) {
-  if (s === 'done') return 'badge text-emerald-400 bg-emerald-500/10 border-emerald-500/25'
-  if (s === 'error') return 'badge text-rose-400 bg-rose-500/10 border-rose-500/25'
-  if (s === 'running') return 'badge text-amber-400 bg-amber-500/10 border-amber-500/25'
-  return 'badge text-gray-400 bg-gray-500/10 border-gray-500/25'
+  if (s === 'done') return 'badge border-emerald-500/25 bg-emerald-500/10 text-emerald-300'
+  if (s === 'error') return 'badge border-rose-500/25 bg-rose-500/10 text-rose-300'
+  if (s === 'running') return 'badge border-amber-500/25 bg-amber-500/10 text-amber-300'
+  return 'badge border-slate-500/30 bg-slate-500/10 text-slate-300'
 }
 
-function fmtDate(d: string) {
-  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+function selectRun(run: BacktestRun) {
+  if (run.status === 'done') activeResult.value = run
 }
 </script>
 
 <template>
   <div class="view-shell">
-    <!-- Header -->
-    <div>
-      <h1 class="view-title">Backtesting</h1>
-      <p class="view-subtitle">Replay historical XRP/{{ quoteCurrency }} price data through AI trading strategies.</p>
+    <div class="mobile-screen-header">
+      <div>
+        <p class="view-kicker">Strategy lab</p>
+        <h1 class="view-title">Backtest</h1>
+        <p class="view-subtitle">Configure, run, and compare historical XRP/{{ quoteCurrency }} strategy results.</p>
+      </div>
+      <span class="app-chip app-chip-active">{{ quoteCurrency }}</span>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- Config form -->
-      <div class="card lg:col-span-1 space-y-4">
-        <h2 class="text-sm font-semibold text-gray-200 pb-3 border-b border-surface-700">Configuration</h2>
+    <div class="grid grid-cols-1 gap-5 lg:grid-cols-[380px_minmax(0,1fr)]">
+      <section class="panel space-y-4 p-4 md:p-5">
+        <div class="flex items-center justify-between border-b border-slate-800/80 pb-3">
+          <h2 class="section-title">Setup</h2>
+          <span class="app-chip">{{ strategyMode === 'random' ? 'Fast test' : 'AI model' }}</span>
+        </div>
 
-        <div>
-          <label class="label">Start Date</label>
-          <input v-model="form.start_date" type="datetime-local" class="input" />
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="label">Start</label>
+            <input v-model="form.start_date" type="datetime-local" class="input" />
+          </div>
+          <div>
+            <label class="label">End</label>
+            <input v-model="form.end_date" type="datetime-local" class="input" />
+          </div>
         </div>
-        <div>
-          <label class="label">End Date</label>
-          <input v-model="form.end_date" type="datetime-local" class="input" />
-        </div>
+
         <div>
           <label class="label">Initial Capital ({{ quoteCurrency }})</label>
           <input v-model.number="form.initial_capital" type="number" min="100" class="input" />
         </div>
+
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="label">Maker Fee %</label>
@@ -132,27 +142,19 @@ function fmtDate(d: string) {
             <input v-model.number="form.taker_fee_pct" type="number" step="0.01" min="0" class="input" />
           </div>
         </div>
+
         <div>
-          <label class="label">Decisions Per Hour</label>
-          <input v-model.number="form.decisions_per_hour" type="number" min="1" max="60" class="input" />
-          <p class="text-[11px] text-gray-600 mt-1">Lower = fewer AI calls = cheaper &amp; faster</p>
-        </div>
-        <div>
-          <label class="label">AI Price Window</label>
-          <input v-model.number="form.ai_price_window" type="number" min="5" max="500" class="input" />
-          <p class="text-[11px] text-gray-600 mt-1">Number of recent price points fed to AI</p>
-        </div>
-        <div>
-          <label class="label">AI Strategy</label>
+          <label class="label">Strategy</label>
           <select
             v-model="strategyMode"
             class="select"
             @change="strategyMode === 'random' ? form.ai_model = 'random' : (form.ai_model = customModel)"
           >
-            <option value="random">Random (free — engine test)</option>
-            <option value="ai">AI Model</option>
+            <option value="random">Random engine test</option>
+            <option value="ai">AI model</option>
           </select>
         </div>
+
         <div v-if="strategyMode === 'ai'">
           <label class="label">Model Name</label>
           <input
@@ -161,132 +163,119 @@ function fmtDate(d: string) {
             list="model-suggestions"
             type="text"
             class="input"
-            placeholder="e.g. gpt-4o, llama3.2, mixtral-8x7b-32768"
+            placeholder="gpt-4o"
           />
           <datalist id="model-suggestions">
             <option value="gpt-4o" />
             <option value="gpt-4o-mini" />
             <option value="gpt-4.1" />
             <option value="gpt-4.1-mini" />
-            <option value="o3-mini" />
             <option value="llama-3.3-70b-versatile" />
             <option value="deepseek-r1-distill-llama-70b" />
-            <option value="llama3.2" />
-            <option value="mistral" />
-            <option value="gemma2" />
-            <option value="phi3" />
           </datalist>
-          <p class="text-[11px] text-gray-600 mt-1">Uses the provider &amp; API key configured in Admin settings</p>
         </div>
 
-        <div v-if="error" class="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/25 rounded-lg px-3 py-2">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="label">Decisions / Hour</label>
+            <input v-model.number="form.decisions_per_hour" type="number" min="1" max="60" class="input" />
+          </div>
+          <div>
+            <label class="label">Price Window</label>
+            <input v-model.number="form.ai_price_window" type="number" min="5" max="500" class="input" />
+          </div>
+        </div>
+
+        <div v-if="error" class="rounded-lg border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
           {{ error }}
         </div>
 
         <button @click="runBacktest" :disabled="running" class="btn btn-primary w-full">
-          <div v-if="running" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-          <span>{{ running ? 'Running…' : 'Run Backtest' }}</span>
+          <div v-if="running" class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+          <span>{{ running ? 'Running' : 'Run Backtest' }}</span>
         </button>
-      </div>
+      </section>
 
-      <!-- Results panel -->
-      <div class="lg:col-span-2 space-y-5">
-        <!-- Metric cards -->
-        <div v-if="activeResult?.result" class="grid grid-cols-3 gap-3">
-          <div class="card-sm text-center">
-            <div class="stat-label">Total Return</div>
-            <div :class="['text-xl font-bold font-mono mt-1.5 tabular-nums', activeResult.result.total_return_pct >= 0 ? 'text-emerald-400' : 'text-rose-400']">
-              {{ activeResult.result.total_return_pct >= 0 ? '+' : '' }}{{ activeResult.result.total_return_pct.toFixed(2) }}%
+      <section class="space-y-5">
+        <div v-if="activeResult?.result" class="mobile-kpi-grid">
+          <div class="card-sm">
+            <div class="stat-label">Return</div>
+            <div :class="['mt-1 font-mono text-2xl font-bold tabular-nums', activeResult.result.total_return_pct >= 0 ? 'text-emerald-400' : 'text-rose-400']">
+              {{ formatPercent(activeResult.result.total_return_pct, 2, true) }}
             </div>
           </div>
-          <div class="card-sm text-center">
-            <div class="stat-label">Sharpe Ratio</div>
-            <div class="text-xl font-bold font-mono text-sky-400 mt-1.5 tabular-nums">{{ activeResult.result.sharpe_ratio.toFixed(3) }}</div>
+          <div class="card-sm">
+            <div class="stat-label">Sharpe</div>
+            <div class="mt-1 font-mono text-2xl font-bold tabular-nums text-blue-300">{{ activeResult.result.sharpe_ratio.toFixed(3) }}</div>
           </div>
-          <div class="card-sm text-center">
-            <div class="stat-label">Max Drawdown</div>
-            <div class="text-xl font-bold font-mono text-rose-400 mt-1.5 tabular-nums">-{{ activeResult.result.max_drawdown_pct.toFixed(2) }}%</div>
+          <div class="card-sm">
+            <div class="stat-label">Drawdown</div>
+            <div class="mt-1 font-mono text-2xl font-bold tabular-nums text-rose-400">-{{ activeResult.result.max_drawdown_pct.toFixed(2) }}%</div>
           </div>
-          <div class="card-sm text-center">
-            <div class="stat-label">Win Rate</div>
-            <div class="text-xl font-bold font-mono text-gray-100 mt-1.5 tabular-nums">{{ activeResult.result.win_rate_pct.toFixed(1) }}%</div>
-          </div>
-          <div class="card-sm text-center">
-            <div class="stat-label">Total Trades</div>
-            <div class="text-xl font-bold font-mono text-gray-100 mt-1.5 tabular-nums">{{ activeResult.result.total_trades }}</div>
-          </div>
-          <div class="card-sm text-center">
-            <div class="stat-label">Final Value</div>
-            <div class="text-xl font-bold font-mono text-gray-100 mt-1.5 tabular-nums">{{ quoteSymbol }}{{ activeResult.result.final_value.toFixed(2) }}</div>
+          <div class="card-sm">
+            <div class="stat-label">Trades</div>
+            <div class="mt-1 font-mono text-2xl font-bold tabular-nums text-slate-50">{{ activeResult.result.total_trades }}</div>
           </div>
         </div>
 
-        <!-- Equity curve -->
-        <div v-if="activeResult?.result?.equity_curve?.length" class="card">
-          <h3 class="text-sm font-semibold text-gray-200 mb-4">Equity Curve</h3>
+        <div v-if="activeResult?.result?.equity_curve?.length" class="panel p-4 md:p-5">
+          <div class="mb-4 flex items-center justify-between">
+            <h3 class="section-title">Equity Curve</h3>
+            <span class="app-chip app-chip-active">{{ formatCurrency(activeResult.result.final_value, quoteCurrency, 2) }}</span>
+          </div>
           <apexchart type="area" height="260" :options="equityChartOptions" :series="equitySeries" />
         </div>
 
-        <!-- Idle state -->
-        <div v-else-if="!running" class="card text-center py-16">
-          <p class="text-gray-600 text-sm">Configure a backtest and click Run to see results here.</p>
-          <p class="text-gray-700 text-xs mt-1">Tip: seed price history from the Admin panel first.</p>
+        <div v-else-if="!running" class="panel py-16 text-center">
+          <p class="text-sm text-slate-500">Configure a backtest and run it to see results here.</p>
+          <p class="mt-1 text-xs text-slate-600">Seed price history from Admin first when the chart is empty.</p>
         </div>
 
-        <!-- Running state -->
-        <div v-if="running" class="card text-center py-16">
-          <div class="inline-block w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin mb-4" />
-          <p class="text-gray-400 text-sm">Backtest running…</p>
-          <p class="text-gray-600 text-xs mt-1">AI mode may take a few minutes depending on date range.</p>
+        <div v-if="running" class="panel py-16 text-center">
+          <div class="mb-4 inline-block h-8 w-8 animate-spin rounded-full border-2 border-blue-400 border-t-transparent" />
+          <p class="text-sm text-slate-400">Backtest running</p>
+          <p class="mt-1 text-xs text-slate-600">AI mode may take a few minutes depending on date range.</p>
         </div>
-      </div>
-    </div>
 
-    <!-- Past runs table -->
-    <div v-if="store.runs.length > 0" class="card">
-      <h2 class="text-sm font-semibold text-gray-200 mb-4">Past Runs</h2>
-      <div class="table-wrapper">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Date Range</th>
-              <th class="text-right">Capital</th>
-              <th>Strategy</th>
-              <th class="text-right">Return</th>
-              <th class="text-right">Sharpe</th>
-              <th class="text-right">Max DD</th>
-              <th>Status</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="run in store.runs" :key="run.id">
-              <td class="text-gray-500 font-mono">#{{ run.id }}</td>
-              <td class="text-xs text-gray-400">{{ fmtDate(run.start_date) }} → {{ fmtDate(run.end_date) }}</td>
-              <td class="text-right font-mono tabular-nums">{{ quoteSymbol }}{{ run.initial_capital.toFixed(0) }}</td>
-              <td><span class="badge-ai">{{ run.ai_model }}</span></td>
-              <td
-                class="text-right font-mono tabular-nums"
-                :class="(run.result?.total_return_pct ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'"
-              >
-                {{ run.result ? ((run.result.total_return_pct >= 0 ? '+' : '') + run.result.total_return_pct.toFixed(2) + '%') : '—' }}
-              </td>
-              <td class="text-right font-mono text-gray-400 tabular-nums">{{ run.result?.sharpe_ratio?.toFixed(3) ?? '—' }}</td>
-              <td class="text-right font-mono text-rose-400 tabular-nums">{{ run.result?.max_drawdown_pct !== undefined ? '-' + run.result.max_drawdown_pct.toFixed(2) + '%' : '—' }}</td>
-              <td><span :class="statusBadge(run.status)">{{ run.status }}</span></td>
-              <td>
-                <button
-                  v-if="run.status === 'done'"
-                  @click="activeResult = run"
-                  class="text-xs text-sky-400 hover:text-sky-300 transition-colors"
-                >View</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+        <section v-if="store.runs.length > 0" class="panel p-4 md:p-5">
+          <div class="mb-4 flex items-center justify-between">
+            <h2 class="section-title">Run History</h2>
+            <span class="text-xs text-slate-500">{{ store.runs.length }} runs</span>
+          </div>
+
+          <div class="space-y-3">
+            <button
+              v-for="run in store.runs"
+              :key="run.id"
+              class="mobile-list-card w-full text-left"
+              :class="activeResult?.id === run.id ? 'border-blue-400/35 bg-blue-500/10' : ''"
+              @click="selectRun(run)"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span :class="statusBadge(run.status)">{{ run.status }}</span>
+                    <span class="badge-ai">{{ run.ai_model }}</span>
+                  </div>
+                  <div class="mt-2 text-sm font-semibold text-slate-100">
+                    {{ formatDate(run.start_date) }} to {{ formatDate(run.end_date) }}
+                  </div>
+                  <div class="mt-1 text-xs text-slate-500">{{ formatCurrency(run.initial_capital, quoteCurrency, 0) }} capital</div>
+                </div>
+                <div class="text-right">
+                  <div
+                    class="font-mono text-sm font-bold tabular-nums"
+                    :class="(run.result?.total_return_pct ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'"
+                  >
+                    {{ run.result ? formatPercent(run.result.total_return_pct, 2, true) : '-' }}
+                  </div>
+                  <div class="mt-1 text-xs text-slate-500">{{ run.result ? formatNumber(run.result.total_trades, 0) + ' trades' : 'No result' }}</div>
+                </div>
+              </div>
+            </button>
+          </div>
+        </section>
+      </section>
     </div>
   </div>
 </template>
-

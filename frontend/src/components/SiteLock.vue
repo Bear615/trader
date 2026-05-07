@@ -53,21 +53,12 @@ async function submit(pinValue: string) {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden" style="background: #050a12;">
-    <!-- Background layers -->
-    <div class="absolute inset-0 pointer-events-none" aria-hidden="true">
-      <div class="absolute" style="top: 25%; left: 52%; transform: translate(-50%, -50%); width: 520px; height: 520px; border-radius: 50%; background: radial-gradient(circle, rgba(59,130,246,0.14) 0%, transparent 70%); filter: blur(54px);" />
-      <div class="absolute" style="bottom: 10%; right: 10%; width: 340px; height: 340px; border-radius: 50%; background: radial-gradient(circle, rgba(251,191,36,0.08) 0%, transparent 70%); filter: blur(64px);" />
-    </div>
-
-    <!-- Card -->
+  <div class="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden bg-[#070b10]">
     <div class="relative z-10 w-full max-w-xs mx-4 animate-scale-in">
       <div class="glass-pin-card glass-shimmer p-8 space-y-7">
-        <!-- Logo -->
         <div class="flex flex-col items-center gap-2">
           <div class="relative mb-1">
-            <div class="absolute inset-0 rounded-2xl blur-md" style="background: rgba(245,158,11,0.25);" />
-            <div class="relative w-14 h-14 rounded-2xl flex items-center justify-center" style="background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.35);">
+            <div class="relative w-14 h-14 rounded-lg flex items-center justify-center" style="background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.35);">
               <svg class="w-7 h-7 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75">
                 <path stroke-linecap="round" stroke-linejoin="round"
                   d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
@@ -78,7 +69,6 @@ async function submit(pinValue: string) {
           <p class="text-xs text-gray-500">Enter your PIN to continue</p>
         </div>
 
-        <!-- PIN dots -->
         <div :class="['flex justify-center gap-3 py-1', shaking ? 'animate-shake' : '']">
           <div
             v-for="i in PIN_LENGTH"
@@ -90,7 +80,6 @@ async function submit(pinValue: string) {
           />
         </div>
 
-        <!-- Status messages -->
         <div class="h-4 -mt-3 text-center">
           <p v-if="error" class="text-xs text-rose-400">{{ error }}</p>
           <p v-else-if="locked" class="text-xs text-amber-500">Locked. Please wait...</p>
@@ -99,7 +88,6 @@ async function submit(pinValue: string) {
           </div>
         </div>
 
-        <!-- Numpad -->
         <div class="grid grid-cols-3 gap-2.5">
           <button
             v-for="key in NUMPAD_KEYS"
@@ -107,15 +95,15 @@ async function submit(pinValue: string) {
             @click="key !== '' ? pressKey(key) : undefined"
             :disabled="locked || loading || key === ''"
             :class="[
-              'h-14 rounded-2xl text-sm font-semibold transition-all duration-150 select-none',
+              'h-14 rounded-lg text-sm font-semibold transition-all duration-150 select-none',
               key === ''
                 ? 'invisible'
-                : key === '⌫'
+                : key === 'Del'
                   ? 'text-gray-400 hover:text-gray-200 active:scale-95'
                   : 'text-gray-100 active:scale-95',
               (locked || loading) ? 'opacity-40 cursor-not-allowed' : ''
             ]"
-            :style="key === '' ? '' : key === '⌫'
+            :style="key === '' ? '' : key === 'Del'
               ? 'background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);'
               : 'background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.09); box-shadow: 0 1px 0 rgba(255,255,255,0.05) inset;'"
           >

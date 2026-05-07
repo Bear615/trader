@@ -1,20 +1,23 @@
 <script setup lang="ts">
 import { onMounted, computed, ref, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 import { usePriceStore } from '@/stores/price'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { useTradesStore } from '@/stores/trades'
 import { useAIStore } from '@/stores/ai'
+import { useSettingsStore } from '@/stores/settings'
 import PriceChart from '@/components/PriceChart.vue'
 import AIDecisionCard from '@/components/AIDecisionCard.vue'
 import TradeRow from '@/components/TradeRow.vue'
-import { currencySymbol, currencyCode } from '@/utils/format'
+import { currencyCode, formatCurrency, formatNumber, formatPercent } from '@/utils/format'
 
 const priceStore = usePriceStore()
 const portfolioStore = usePortfolioStore()
 const tradesStore = useTradesStore()
 const aiStore = useAIStore()
+const settingsStore = useSettingsStore()
 
-const timeframe = ref('24h')
+const timeframe = ref(String(settingsStore.settings['ui_chart_default_timeframe'] || '24h'))
 const timeframes = ['1h', '6h', '24h', '7d', '30d']
 
 async function loadAll() {
@@ -38,134 +41,94 @@ watch(timeframe, () => priceStore.fetchHistory(timeframe.value))
 const p = computed(() => portfolioStore.portfolio)
 const m = computed(() => portfolioStore.metrics)
 const quoteCurrency = computed(() => currencyCode(m.value?.quote_currency, p.value?.quote_currency))
-const quoteSymbol = computed(() => currencySymbol(quoteCurrency.value))
 const currentPair = computed(() => `XRP / ${quoteCurrency.value}`)
+const isLiveMode = computed(() => settingsStore.settings['trading_mode'] === 'live')
 
-function formatQuote(value: number | null | undefined, decimals = 2) {
-  if (value === null || value === undefined || Number.isNaN(value)) return '-'
-  return quoteSymbol.value + value.toLocaleString('en-US', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  })
-}
-
-function formatNumber(value: number | null | undefined, decimals = 4) {
-  if (value === null || value === undefined || Number.isNaN(value)) return '-'
-  return value.toLocaleString('en-US', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  })
-}
-
-const portfolioValue = computed(() => formatQuote(p.value?.xrp_value_quote ?? m.value?.xrp_value_quote ?? 0, 2))
-const quoteBalance = computed(() => formatQuote(p.value?.usd_balance ?? m.value?.usd_balance ?? 0, 2))
+const portfolioTotal = computed(() =>
+  p.value?.total_value_usd ?? m.value?.total_value_usd ?? p.value?.xrp_value_quote ?? m.value?.xrp_value_quote ?? 0,
+)
+const xrpValueRaw = computed(() => p.value?.xrp_value_quote ?? m.value?.xrp_value_quote ?? 0)
+const quoteBalanceRaw = computed(() => p.value?.usd_balance ?? m.value?.usd_balance ?? 0)
+const portfolioValue = computed(() => formatCurrency(portfolioTotal.value, quoteCurrency.value, 2))
+const quoteBalance = computed(() => formatCurrency(quoteBalanceRaw.value, quoteCurrency.value, 2))
 const xrpBalance = computed(() => formatNumber(p.value?.xrp_balance ?? m.value?.xrp_balance ?? 0, 4))
-const xrpValue = computed(() => formatQuote(p.value?.xrp_value_quote ?? m.value?.xrp_value_quote ?? 0, 2))
+const xrpValue = computed(() => formatCurrency(xrpValueRaw.value, quoteCurrency.value, 2))
 const totalTrades = computed(() => m.value?.total_trades ?? tradesStore.total ?? 0)
-const winRate = computed(() => m.value?.win_rate_pct != null ? m.value.win_rate_pct.toFixed(1) + '%' : '-')
+const winRate = computed(() => formatPercent(m.value?.win_rate_pct, 1))
 const winRateGood = computed(() => (m.value?.win_rate_pct ?? 0) >= 50)
-const averageEntry = computed(() => m.value?.avg_buy_price ? formatQuote(m.value.avg_buy_price, 4) : '-')
+const averageEntry = computed(() => m.value?.avg_buy_price ? formatCurrency(m.value.avg_buy_price, quoteCurrency.value, 4) : '-')
 const roiPct = computed(() => p.value?.roi_pct ?? m.value?.roi_pct ?? null)
 const roiPositive = computed(() => (roiPct.value ?? 0) >= 0)
-const roiLabel = computed(() => roiPct.value !== null ? (roiPositive.value ? '+' : '') + roiPct.value.toFixed(2) + '%' : '-')
+const roiLabel = computed(() => formatPercent(roiPct.value, 2, true))
+const currentPrice = computed(() => priceStore.current ? formatCurrency(priceStore.current.price, quoteCurrency.value, 6) : '-')
+const cashShare = computed(() => portfolioTotal.value > 0 ? quoteBalanceRaw.value / portfolioTotal.value * 100 : 0)
+const xrpShare = computed(() => portfolioTotal.value > 0 ? xrpValueRaw.value / portfolioTotal.value * 100 : 0)
+const riskUsed = computed(() => Math.min(100, Math.max(0, xrpShare.value)))
+const latestDecision = computed(() => aiStore.items[0])
 </script>
 
 <template>
   <div class="view-shell">
-    <div class="view-header">
+    <div class="mobile-screen-header">
       <div>
+        <p class="view-kicker">XRP AI Trader</p>
         <h1 class="view-title">Dashboard</h1>
-        <p class="view-subtitle">XRP / XRP-{{ quoteCurrency }} trading overview using live account and price data.</p>
+        <p class="view-subtitle">Live XRP/{{ quoteCurrency }} account health and trading flow.</p>
       </div>
+      <span class="app-chip" :class="isLiveMode ? 'border-rose-400/30 text-rose-300' : 'app-chip-active'">
+        {{ isLiveMode ? 'Live' : 'Paper' }}
+      </span>
     </div>
 
-    <div class="grid grid-cols-1 gap-4 xl:grid-cols-5">
-      <div class="metric-card">
-        <div class="metric-top">
-          <div class="metric-icon">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4 7.5h14a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2v-9a2 2 0 012-2zm0 0V5.5a2 2 0 012-2h10" />
-            </svg>
-          </div>
-          <span>Portfolio Value</span>
-        </div>
+    <section class="panel space-y-4 p-4">
+      <div class="flex items-start justify-between gap-4">
         <div>
-          <div class="metric-value">{{ portfolioValue }}</div>
-          <div class="metric-sub">
-            <span :class="roiPositive ? 'text-emerald-400' : 'text-rose-400'">{{ roiLabel }}</span>
-            <span class="ml-2">ROI</span>
+          <p class="text-xs font-semibold uppercase text-slate-500">XRP / {{ quoteCurrency }}</p>
+          <div class="mt-1 font-mono text-3xl font-bold tabular-nums text-slate-50 md:text-4xl">
+            {{ currentPrice }}
           </div>
+          <p class="mt-1 text-xs text-slate-500">
+            {{ priceStore.current ? 'Updated from the live feed' : 'Waiting for the next price poll' }}
+          </p>
+        </div>
+        <div class="rounded-md border border-emerald-400/25 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-300">
+          {{ priceStore.connected ? 'Live feed' : 'Offline' }}
         </div>
       </div>
 
-      <div class="metric-card">
-        <div class="metric-top">
-          <div class="metric-icon">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4 7c0 1.66 3.58 3 8 3s8-1.34 8-3-3.58-3-8-3-8 1.34-8 3zm0 0v5c0 1.66 3.58 3 8 3s8-1.34 8-3V7M4 12v5c0 1.66 3.58 3 8 3s8-1.34 8-3v-5" />
-            </svg>
-          </div>
-          <span>Open XRP Position</span>
+      <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div class="card-sm">
+          <div class="stat-label">Portfolio</div>
+          <div class="mt-1 font-mono text-xl font-bold tabular-nums text-slate-50">{{ portfolioValue }}</div>
+          <div class="mt-1 text-xs" :class="roiPositive ? 'text-emerald-400' : 'text-rose-400'">{{ roiLabel }} ROI</div>
         </div>
-        <div>
-          <div class="metric-value">{{ xrpBalance }} <span class="text-lg text-slate-300">XRP</span></div>
-          <div class="metric-sub">approx {{ xrpValue }}</div>
+        <div class="card-sm">
+          <div class="stat-label">{{ quoteCurrency }} Cash</div>
+          <div class="mt-1 font-mono text-xl font-bold tabular-nums text-slate-50">{{ quoteBalance }}</div>
+          <div class="mt-1 text-xs text-slate-500">{{ cashShare.toFixed(0) }}% liquid</div>
+        </div>
+        <div class="card-sm">
+          <div class="stat-label">Open XRP</div>
+          <div class="mt-1 font-mono text-xl font-bold tabular-nums text-slate-50">{{ xrpBalance }}</div>
+          <div class="mt-1 text-xs text-slate-500">{{ xrpValue }}</div>
+        </div>
+        <div class="card-sm">
+          <div class="stat-label">Win Rate</div>
+          <div class="mt-1 font-mono text-xl font-bold tabular-nums" :class="winRateGood ? 'text-emerald-400' : 'text-rose-400'">
+            {{ winRate }}
+          </div>
+          <div class="mt-1 text-xs text-slate-500">{{ totalTrades }} trades</div>
         </div>
       </div>
+    </section>
 
-      <div class="metric-card">
-        <div class="metric-top">
-          <div class="metric-icon">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h11m0 0l-4-4m4 4l-4 4M17 17H6m0 0l4 4m-4-4l4-4" />
-            </svg>
-          </div>
-          <span>Total Trades</span>
-        </div>
-        <div>
-          <div class="metric-value">{{ totalTrades }}</div>
-          <div class="metric-sub">{{ m?.buy_count ?? 0 }} buy / {{ m?.sell_count ?? 0 }} sell</div>
-        </div>
-      </div>
-
-      <div class="metric-card">
-        <div class="metric-top">
-          <div class="metric-icon">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0V4zm10 2h3a3 3 0 01-3 3M7 6H4a3 3 0 003 3" />
-            </svg>
-          </div>
-          <span>Win Rate</span>
-        </div>
-        <div>
-          <div class="metric-value" :class="winRateGood ? 'text-emerald-400' : 'text-rose-400'">{{ winRate }}</div>
-          <div class="metric-sub">Closed trades</div>
-        </div>
-      </div>
-
-      <div class="metric-card">
-        <div class="metric-top">
-          <div class="metric-icon">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zm0-13v4l3 2" />
-            </svg>
-          </div>
-          <span>Average Entry</span>
-        </div>
-        <div>
-          <div class="metric-value">{{ averageEntry }}</div>
-          <div class="metric-sub">Per XRP</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="panel p-5">
-      <div class="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+    <section class="panel p-4 md:p-5">
+      <div class="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 class="section-title">{{ currentPair }}</h2>
-          <p class="section-subtitle mt-1">{{ priceStore.current ? 'Live price feed' : 'Waiting for live price feed' }}</p>
+          <p class="section-subtitle mt-1">Price action with mobile-safe timeframe controls.</p>
         </div>
-        <div class="segmented">
+        <div class="segmented overflow-x-auto">
           <button
             v-for="tf in timeframes"
             :key="tf"
@@ -178,28 +141,56 @@ const roiLabel = computed(() => roiPct.value !== null ? (roiPositive.value ? '+'
         </div>
       </div>
       <PriceChart :data="priceStore.history" :loading="priceStore.loading" :quote-currency="quoteCurrency" />
-    </div>
+    </section>
+
+    <section class="grid grid-cols-1 gap-3 md:grid-cols-3">
+      <div class="card-sm">
+        <div class="stat-label">Risk Used</div>
+        <div class="mt-2 flex items-center gap-3">
+          <div class="h-2 flex-1 overflow-hidden rounded-full bg-slate-800">
+            <div class="h-full rounded-full bg-amber-400" :style="{ width: riskUsed + '%' }" />
+          </div>
+          <span class="font-mono text-sm font-semibold tabular-nums text-slate-200">{{ riskUsed.toFixed(0) }}%</span>
+        </div>
+      </div>
+      <div class="card-sm">
+        <div class="stat-label">Average Entry</div>
+        <div class="mt-1 font-mono text-lg font-bold tabular-nums text-slate-50">{{ averageEntry }}</div>
+        <div class="text-xs text-slate-500">Per XRP</div>
+      </div>
+      <div class="card-sm">
+        <div class="stat-label">Latest AI</div>
+        <div class="mt-1 flex items-center justify-between gap-3">
+          <span :class="latestDecision?.action === 'BUY' ? 'badge-buy' : latestDecision?.action === 'SELL' ? 'badge-sell' : 'badge-hold'">
+            {{ latestDecision?.action ?? 'WAIT' }}
+          </span>
+          <span class="font-mono text-sm text-slate-300">
+            {{ latestDecision ? Math.round(latestDecision.confidence * 100) + '%' : '-' }}
+          </span>
+        </div>
+      </div>
+    </section>
 
     <div class="grid grid-cols-1 gap-5 xl:grid-cols-2">
-      <div class="panel p-5">
+      <section class="panel p-4 md:p-5">
         <div class="mb-4 flex items-center justify-between">
           <h2 class="section-title">Recent Trades</h2>
           <RouterLink to="/trades" class="text-sm font-medium text-blue-400 hover:text-blue-300">View all</RouterLink>
         </div>
-        <div v-if="tradesStore.items.length === 0" class="rounded-xl border border-slate-700/40 bg-slate-950/25 py-10 text-center text-sm text-slate-500">
+        <div v-if="tradesStore.items.length === 0" class="mobile-list-card py-10 text-center text-sm text-slate-500">
           No trades yet
         </div>
         <div v-else class="space-y-3">
           <TradeRow v-for="trade in tradesStore.items.slice(0, 4)" :key="trade.id" :trade="trade" />
         </div>
-      </div>
+      </section>
 
-      <div class="panel p-5">
+      <section class="panel p-4 md:p-5">
         <div class="mb-4 flex items-center justify-between">
           <h2 class="section-title">AI Decisions</h2>
           <RouterLink to="/ai" class="text-sm font-medium text-blue-400 hover:text-blue-300">View all</RouterLink>
         </div>
-        <div v-if="aiStore.items.length === 0" class="rounded-xl border border-slate-700/40 bg-slate-950/25 py-10 text-center text-sm text-slate-500">
+        <div v-if="aiStore.items.length === 0" class="mobile-list-card py-10 text-center text-sm text-slate-500">
           No AI decisions yet
         </div>
         <div v-else class="space-y-2">
@@ -210,18 +201,7 @@ const roiLabel = computed(() => roiPct.value !== null ? (roiPositive.value ? '+'
             compact
           />
         </div>
-      </div>
-    </div>
-
-    <div class="panel flex flex-col gap-3 p-4 text-sm text-slate-400 md:flex-row md:items-center md:justify-between">
-      <div>
-        <span class="font-semibold text-slate-200">{{ quoteCurrency }} cash balance:</span>
-        <span class="ml-2 tabular-nums">{{ quoteBalance }}</span>
-      </div>
-      <div>
-        <span class="font-semibold text-slate-200">Current XRP price:</span>
-        <span class="ml-2 tabular-nums">{{ priceStore.current ? formatQuote(priceStore.current.price, 6) : '-' }}</span>
-      </div>
+      </section>
     </div>
   </div>
 </template>

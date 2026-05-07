@@ -1,21 +1,27 @@
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, ref } from 'vue'
 import { useTradesStore } from '@/stores/trades'
 import { useSettingsStore } from '@/stores/settings'
-import { currencyCode, currencySymbol } from '@/utils/format'
+import { currencyCode, formatCurrency, formatDate, formatNumber } from '@/utils/format'
 import api from '@/api/client'
 
 const store = useTradesStore()
 const settingsStore = useSettingsStore()
+const expandedTradeId = ref<number | null>(null)
+
 const totalPages = computed(() => Math.ceil(store.total / store.perPage))
 const quoteCurrency = computed(() => currencyCode(settingsStore.settings['quote_currency']))
-const quoteSymbol = computed(() => currencySymbol(quoteCurrency.value))
+const visiblePnl = computed(() => store.items.reduce((sum, trade) => sum + (trade.pnl ?? 0), 0))
+const visiblePnlClass = computed(() => visiblePnl.value >= 0 ? 'text-emerald-400' : 'text-rose-400')
+const buyCount = computed(() => store.items.filter((trade) => trade.action === 'BUY').length)
+const sellCount = computed(() => store.items.filter((trade) => trade.action === 'SELL').length)
 
 onMounted(() => store.fetchTrades(1))
 
 function setFilter(f: 'BUY' | 'SELL' | null) {
   store.actionFilter = f
   store.fetchTrades(1)
+  expandedTradeId.value = null
 }
 
 function nextPage() {
@@ -31,86 +37,136 @@ async function exportCsv() {
   const url = URL.createObjectURL(res.data)
   const a = document.createElement('a')
   a.href = url
-  a.download = 'trades.csv'
+  a.download = `xrp-${quoteCurrency.value.toLowerCase()}-trades.csv`
   a.click()
   URL.revokeObjectURL(url)
 }
 
-const visiblePnl = computed(() => store.items.reduce((sum, trade) => sum + (trade.pnl ?? 0), 0))
-const visiblePnlClass = computed(() => visiblePnl.value >= 0 ? 'text-emerald-400' : 'text-rose-400')
-const pnlClass = (pnl: number | null) => {
+function pnlLabel(pnl: number | null) {
+  if (pnl === null) return '-'
+  return formatCurrency(Math.abs(pnl), quoteCurrency.value, 4).replace(/^/, pnl >= 0 ? '+' : '-')
+}
+
+function pnlClass(pnl: number | null) {
   if (pnl === null) return 'text-slate-500'
   return pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
 }
 
-function fmtDate(ts: string) {
-  const d = new Date(ts)
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
-function fmtTime(ts: string) {
-  const d = new Date(ts)
-  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
+function toggleTrade(id: number) {
+  expandedTradeId.value = expandedTradeId.value === id ? null : id
 }
 </script>
 
 <template>
   <div class="view-shell">
-    <div class="view-header">
+    <div class="mobile-screen-header">
       <div>
-        <h1 class="view-title">Trade History</h1>
-        <p class="view-subtitle">Review your past XRP/{{ quoteCurrency }} trades.</p>
+        <p class="view-kicker">Audit log</p>
+        <h1 class="view-title">Trades</h1>
+        <p class="view-subtitle">History as scan-friendly cards, with table detail retained on desktop.</p>
       </div>
-
-      <div class="flex flex-wrap items-center gap-4">
-        <div class="segmented">
-          <button @click="setFilter(null)" class="segmented-button" :class="{ 'segmented-button-active': store.actionFilter === null }">All</button>
-          <button @click="setFilter('BUY')" class="segmented-button" :class="{ 'segmented-button-active': store.actionFilter === 'BUY' }">Buy</button>
-          <button @click="setFilter('SELL')" class="segmented-button" :class="{ 'segmented-button-active': store.actionFilter === 'SELL' }">Sell</button>
-        </div>
-
-        <button @click="exportCsv" class="btn btn-ghost">
-          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M5 19h14" />
-          </svg>
-          Export CSV
-        </button>
-      </div>
+      <button @click="exportCsv" class="btn btn-ghost btn-sm shrink-0">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M5 19h14" />
+        </svg>
+        Export
+      </button>
     </div>
 
-    <div class="panel p-0">
-      <div class="grid grid-cols-1 divide-y divide-slate-700/50 md:grid-cols-2 md:divide-x md:divide-y-0">
-        <div class="flex items-center gap-5 p-8">
-          <div class="flex h-14 w-14 items-center justify-center rounded-xl border border-slate-600/45 bg-slate-950/35 text-slate-300">
-            <svg class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h11m0 0l-4-4m4 4l-4 4M17 17H6m0 0l4 4m-4-4l4-4" />
-            </svg>
-          </div>
-          <div>
-            <div class="text-sm text-slate-400">Total Trades</div>
-            <div class="mt-1 text-3xl font-bold tabular-nums text-slate-50">{{ store.total }}</div>
-            <div class="mt-1 text-sm text-slate-500">All time</div>
-          </div>
+    <section class="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div class="card-sm">
+        <div class="stat-label">Total Trades</div>
+        <div class="mt-1 font-mono text-2xl font-bold tabular-nums text-slate-50">{{ store.total }}</div>
+        <div class="text-xs text-slate-500">All time</div>
+      </div>
+      <div class="card-sm">
+        <div class="stat-label">Visible P&amp;L</div>
+        <div class="mt-1 font-mono text-2xl font-bold tabular-nums" :class="visiblePnlClass">
+          {{ pnlLabel(visiblePnl) }}
         </div>
+        <div class="text-xs text-slate-500">This page</div>
+      </div>
+      <div class="card-sm">
+        <div class="stat-label">Buys</div>
+        <div class="mt-1 font-mono text-2xl font-bold tabular-nums text-emerald-400">{{ buyCount }}</div>
+        <div class="text-xs text-slate-500">Visible</div>
+      </div>
+      <div class="card-sm">
+        <div class="stat-label">Sells</div>
+        <div class="mt-1 font-mono text-2xl font-bold tabular-nums text-rose-400">{{ sellCount }}</div>
+        <div class="text-xs text-slate-500">Visible</div>
+      </div>
+    </section>
 
-        <div class="flex items-center gap-5 p-8">
-          <div class="flex h-14 w-14 items-center justify-center rounded-xl border border-slate-600/45 bg-slate-950/35 text-slate-300">
-            <svg class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4 17l6-6 4 4 6-8" />
-            </svg>
-          </div>
-          <div>
-            <div class="text-sm text-slate-400">Realized P&amp;L</div>
-            <div class="mt-1 text-3xl font-bold tabular-nums" :class="visiblePnlClass">
-              {{ visiblePnl >= 0 ? '+' : '-' }}{{ quoteSymbol }}{{ Math.abs(visiblePnl).toFixed(4) }}
+    <div class="sticky-mobile-action flex items-center justify-between gap-3">
+      <div class="segmented">
+        <button @click="setFilter(null)" class="segmented-button" :class="{ 'segmented-button-active': store.actionFilter === null }">All</button>
+        <button @click="setFilter('BUY')" class="segmented-button" :class="{ 'segmented-button-active': store.actionFilter === 'BUY' }">Buy</button>
+        <button @click="setFilter('SELL')" class="segmented-button" :class="{ 'segmented-button-active': store.actionFilter === 'SELL' }">Sell</button>
+      </div>
+      <span class="hidden text-xs text-slate-500 sm:block">XRP/{{ quoteCurrency }}</span>
+    </div>
+
+    <section class="panel p-4 md:hidden">
+      <div v-if="store.loading" class="flex justify-center py-12">
+        <div class="h-6 w-6 animate-spin rounded-full border-2 border-blue-400 border-t-transparent" />
+      </div>
+      <div v-else-if="store.items.length === 0" class="py-12 text-center text-sm text-slate-500">
+        No trades yet
+      </div>
+      <div v-else class="space-y-3">
+        <article
+          v-for="trade in store.items"
+          :key="trade.id"
+          class="mobile-list-card"
+        >
+          <button class="w-full text-left" @click="toggleTrade(trade.id)">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                  <span :class="trade.action === 'BUY' ? 'badge-buy' : 'badge-sell'">{{ trade.action }}</span>
+                  <span :class="trade.triggered_by === 'ai' ? 'badge-ai' : 'badge-hold'">{{ trade.triggered_by }}</span>
+                </div>
+                <div class="mt-2 font-mono text-lg font-bold tabular-nums text-slate-50">
+                  {{ formatNumber(trade.xrp_amount, 4) }} XRP
+                </div>
+                <div class="mt-1 text-xs text-slate-500">{{ formatDate(trade.timestamp) }}</div>
+              </div>
+              <div class="text-right">
+                <div class="font-mono text-sm font-semibold tabular-nums text-slate-100">
+                  {{ formatCurrency(trade.usd_amount, quoteCurrency, 2) }}
+                </div>
+                <div class="mt-1 font-mono text-xs tabular-nums" :class="pnlClass(trade.pnl)">
+                  {{ pnlLabel(trade.pnl) }}
+                </div>
+              </div>
             </div>
-            <div class="mt-1 text-sm text-slate-500">Visible trades</div>
-          </div>
-        </div>
-      </div>
-    </div>
+          </button>
 
-    <div class="panel p-0">
+          <div v-if="expandedTradeId === trade.id" class="mt-3 border-t border-slate-800/75 pt-2">
+            <div class="mobile-detail-row">
+              <span class="mobile-detail-label">Price</span>
+              <span class="mobile-detail-value">{{ formatCurrency(trade.price_at_trade, quoteCurrency, 6) }}</span>
+            </div>
+            <div class="mobile-detail-row">
+              <span class="mobile-detail-label">Fee</span>
+              <span class="mobile-detail-value">{{ formatCurrency(trade.fee_usd, quoteCurrency, 4) }}</span>
+            </div>
+            <div class="mobile-detail-row">
+              <span class="mobile-detail-label">{{ quoteCurrency }} After</span>
+              <span class="mobile-detail-value">{{ formatCurrency(trade.usd_balance_after, quoteCurrency, 2) }}</span>
+            </div>
+            <div class="mobile-detail-row">
+              <span class="mobile-detail-label">XRP After</span>
+              <span class="mobile-detail-value">{{ formatNumber(trade.xrp_balance_after, 4) }}</span>
+            </div>
+            <p v-if="trade.note" class="mt-3 text-xs leading-relaxed text-slate-400">{{ trade.note }}</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel hidden p-0 md:block">
       <div class="table-wrapper border-0 bg-transparent shadow-none">
         <table class="table">
           <thead>
@@ -138,37 +194,32 @@ function fmtTime(ts: string) {
             <template v-else>
               <tr v-for="trade in store.items" :key="trade.id">
                 <td>
-                  <div class="text-slate-100">{{ fmtDate(trade.timestamp) }}</div>
-                  <div class="mt-1 font-mono text-xs text-slate-500">{{ fmtTime(trade.timestamp) }}</div>
+                  <div class="text-slate-100">{{ formatDate(trade.timestamp) }}</div>
                 </td>
                 <td>
                   <span :class="trade.action === 'BUY' ? 'badge-buy' : 'badge-sell'">{{ trade.action }}</span>
                 </td>
-                <td class="text-right font-mono tabular-nums">{{ trade.xrp_amount.toFixed(6) }}</td>
-                <td class="text-right font-mono tabular-nums">{{ quoteSymbol }}{{ trade.price_at_trade.toFixed(6) }}</td>
-                <td class="text-right font-mono tabular-nums">{{ quoteSymbol }}{{ trade.usd_amount.toFixed(2) }}</td>
-                <td class="text-right font-mono tabular-nums text-slate-500">{{ quoteSymbol }}{{ trade.fee_usd.toFixed(4) }}</td>
-                <td :class="['text-right font-mono tabular-nums', pnlClass(trade.pnl)]">
-                  {{ trade.pnl !== null ? (trade.pnl >= 0 ? '+' : '-') + quoteSymbol + Math.abs(trade.pnl).toFixed(4) : '-' }}
-                </td>
+                <td class="text-right font-mono tabular-nums">{{ formatNumber(trade.xrp_amount, 6) }}</td>
+                <td class="text-right font-mono tabular-nums">{{ formatCurrency(trade.price_at_trade, quoteCurrency, 6) }}</td>
+                <td class="text-right font-mono tabular-nums">{{ formatCurrency(trade.usd_amount, quoteCurrency, 2) }}</td>
+                <td class="text-right font-mono tabular-nums text-slate-500">{{ formatCurrency(trade.fee_usd, quoteCurrency, 4) }}</td>
+                <td :class="['text-right font-mono tabular-nums', pnlClass(trade.pnl)]">{{ pnlLabel(trade.pnl) }}</td>
                 <td>
-                  <span :class="trade.triggered_by === 'ai' ? 'badge-ai' : 'badge border-slate-500/30 bg-slate-500/10 text-slate-300'">
-                    {{ trade.triggered_by.toUpperCase() }}
-                  </span>
+                  <span :class="trade.triggered_by === 'ai' ? 'badge-ai' : 'badge-hold'">{{ trade.triggered_by.toUpperCase() }}</span>
                 </td>
                 <td class="text-right font-mono tabular-nums text-slate-400">
-                  {{ trade.usd_balance_after != null ? quoteSymbol + trade.usd_balance_after.toFixed(2) : '-' }}
+                  {{ formatCurrency(trade.usd_balance_after, quoteCurrency, 2) }}
                 </td>
               </tr>
             </template>
           </tbody>
         </table>
       </div>
-    </div>
+    </section>
 
     <div v-if="totalPages > 1" class="flex items-center justify-between">
       <p class="text-sm text-slate-500">
-        Page {{ store.page }} of {{ totalPages }} / {{ store.total }} trades
+        Page {{ store.page }} of {{ totalPages }}
       </p>
       <div class="flex gap-2">
         <button @click="prevPage" :disabled="store.page === 1" class="btn btn-ghost btn-sm">Prev</button>

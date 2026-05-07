@@ -102,7 +102,7 @@ const statusColor = computed(() => {
       'border-white/[0.06]',
       type === 'textarea'
         ? 'flex flex-col gap-3'
-        : 'flex items-start justify-between gap-6'
+        : 'flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6'
     ]"
   >
     <!-- Label + description -->
@@ -112,7 +112,7 @@ const statusColor = computed(() => {
     </div>
 
     <!-- Control -->
-    <div :class="type === 'textarea' ? 'w-full' : 'flex-shrink-0 flex items-center gap-2'">
+    <div :class="type === 'textarea' ? 'w-full' : 'flex w-full items-center gap-2 sm:w-auto sm:flex-shrink-0'">
       <!-- Toggle -->
       <template v-if="type === 'toggle'">
         <button
@@ -133,7 +133,6 @@ const statusColor = computed(() => {
         </span>
       </template>
 
-      <!-- Textarea — full-width, stacked -->
       <template v-else-if="type === 'textarea'">
         <div class="flex flex-col gap-2 w-full">
           <textarea
@@ -162,8 +161,8 @@ const statusColor = computed(() => {
 
       <!-- Select (provider preset) -->
       <template v-else-if="type === 'select-provider'">
-        <div class="flex flex-col gap-1.5 items-end">
-          <select v-model="local" class="select w-40" @change="handleSave">
+        <div class="flex w-full flex-col gap-1.5 sm:items-end">
+          <select v-model="local" class="select w-full sm:w-40" @change="handleSave">
             <option v-for="(url, name) in PROVIDER_PRESETS" :key="name" :value="name">
               {{ name }}
             </option>
@@ -176,26 +175,26 @@ const statusColor = computed(() => {
 
       <!-- Select (timeframe) -->
       <template v-else-if="type === 'select-timeframe'">
-        <select v-model="local" class="select w-28" @change="handleSave">
+        <select v-model="local" class="select w-full sm:w-28" @change="handleSave">
           <option v-for="tf in ['1h','6h','24h','7d','30d']" :key="tf" :value="tf">{{ tf }}</option>
         </select>
       </template>
 
       <template v-else-if="type === 'select-currency'">
-        <select v-model="local" class="select w-28" @change="handleSave">
-          <option value="USD">USD</option>
+        <select v-model="local" class="select w-full sm:w-28" @change="handleSave">
           <option value="GBP">GBP</option>
+          <option value="USD">USD</option>
         </select>
       </template>
 
       <!-- Number / Text / Password -->
       <template v-else>
-        <div class="flex items-center gap-2">
+        <div class="flex w-full items-center gap-2">
           <input
             v-model="local"
             :type="type === 'password' ? 'password' : (type === 'number' ? 'number' : 'text')"
             :step="type === 'number' ? 'any' : undefined"
-            class="input w-36 text-right font-mono text-sm"
+            class="input w-full text-right font-mono text-sm sm:w-36"
             @keyup.enter="handleSave"
           />
           <button
