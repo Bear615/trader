@@ -80,6 +80,7 @@ DEFAULTS: dict[str, tuple[Any, str]] = {
     "kraken_pair":                          ("XRPGBP", "Kraken XRP trading pair; it is normalized to match the selected quote currency"),
     "kraken_order_type":                    ("market", "Order type for Kraken trades: 'market' or 'limit'"),
     "kraken_balance_sync_interval_minutes": (20,   "How often (minutes) to reconcile local portfolio balances with Kraken in live mode"),
+    "kraken_balance_delta_warn_threshold":   (0.01, "Minimum absolute quote-currency delta to flag an unexpected non-trade balance change"),
 
     # --- Telegram Notifications ---
     "telegram_enabled":                     (False, "Send trade and AI decision notifications to a Telegram chat"),

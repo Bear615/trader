@@ -52,6 +52,9 @@ const showLiveConfirmModal = ref(false)
 const krakenTestResult = ref<{ ok: boolean; usd?: number; xrp?: number; quote_currency?: string; error?: string } | null>(null)
 const krakenTestLoading = ref(false)
 const krakenSyncLoading = ref(false)
+const balanceCheckLoading = ref(false)
+const manualBalanceAmount = ref('')
+const manualBalanceNote = ref('')
 
 const isLiveMode = computed(() => settingsStore.settings['trading_mode'] === 'live')
 const quoteCurrency = computed(() => String(settingsStore.settings['quote_currency'] || 'GBP').toUpperCase())
@@ -165,6 +168,45 @@ async function syncKrakenBalance() {
   }
 }
 
+
+
+async function checkUnexpectedBalanceChange() {
+  balanceCheckLoading.value = true
+  errorMsg.value = ''
+  successMsg.value = ''
+  try {
+    const res = await api.post('/admin/kraken/check-unexpected-balance-change')
+    if (res.data.unexpected_quote_change || res.data.unexpected_xrp_change) {
+      successMsg.value = `Unexpected balance change detected and recorded. ${res.data.quote_currency}: ${res.data.usd_delta >= 0 ? '+' : ''}${res.data.usd_delta.toFixed(2)}, XRP: ${res.data.xrp_delta >= 0 ? '+' : ''}${res.data.xrp_delta.toFixed(6)}`
+      await Promise.all([portfolioStore.fetchPortfolio(), portfolioStore.fetchMetrics()])
+    } else {
+      successMsg.value = 'No unexpected balance change detected.'
+    }
+  } catch (e: unknown) {
+    errorMsg.value = axios.isAxiosError(e) ? (e.response?.data?.detail ?? e.message) : String(e)
+  } finally {
+    balanceCheckLoading.value = false
+  }
+}
+
+async function recordManualBalanceChange() {
+  const amount = Number(manualBalanceAmount.value)
+  if (!Number.isFinite(amount) || amount === 0) {
+    errorMsg.value = 'Enter a non-zero amount.'
+    return
+  }
+  errorMsg.value = ''
+  successMsg.value = ''
+  try {
+    await api.post('/admin/portfolio/record-balance-change', { amount, note: manualBalanceNote.value || null })
+    successMsg.value = `Recorded ${amount > 0 ? 'deposit' : 'withdrawal'} of ${quoteSymbol.value}${Math.abs(amount).toFixed(2)}.`
+    manualBalanceAmount.value = ''
+    manualBalanceNote.value = ''
+    await Promise.all([portfolioStore.fetchPortfolio(), portfolioStore.fetchMetrics()])
+  } catch (e: unknown) {
+    errorMsg.value = axios.isAxiosError(e) ? (e.response?.data?.detail ?? e.message) : String(e)
+  }
+}
 const groups = computed(() => [
   {
     id: 'data',
@@ -524,6 +566,14 @@ async function clearTrades() {
                 <div v-if="krakenSyncLoading" class="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin" />
                 Poll {{ quoteCurrency }} Balance
               </button>
+              <button
+                @click="checkUnexpectedBalanceChange"
+                :disabled="balanceCheckLoading"
+                class="btn btn-ghost btn-sm"
+              >
+                <div v-if="balanceCheckLoading" class="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin" />
+                Check unexpected changes
+              </button>
               <div class="ml-auto flex items-center gap-2 rounded-lg border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-xs font-mono">
                 <span class="text-sky-300 uppercase tracking-wider font-semibold">Live Price</span>
                 <span class="text-sky-100 tabular-nums">{{ livePrice }}</span>
@@ -539,6 +589,18 @@ async function clearTrades() {
               </template>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div class="panel space-y-4 p-5">
+        <div class="flex items-center gap-3 border-b border-slate-700/50 pb-4">
+          <h2 class="text-base font-semibold text-sky-300">Manual Balance Change</h2>
+          <p class="text-sm text-slate-500">Record deposits/withdrawals not caused by trades.</p>
+        </div>
+        <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <input v-model="manualBalanceAmount" type="number" step="0.01" placeholder="Amount (+deposit, -withdrawal)" class="rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-100" />
+          <input v-model="manualBalanceNote" type="text" placeholder="Optional note" class="rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-100" />
+          <button @click="recordManualBalanceChange" class="btn btn-ghost btn-sm">Record balance change</button>
         </div>
       </div>
 

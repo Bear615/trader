@@ -122,6 +122,120 @@ def reset_roi_endpoint(db: Session = Depends(get_db)):
     return portfolio.to_dict(quote_currency=str(get_setting(db, "quote_currency")).upper(), avg_buy_price=_avg_buy_price(db))
 
 
+
+
+class BalanceAdjustmentBody(BaseModel):
+    amount: float = Field(..., description="Positive for deposit, negative for withdrawal")
+    note: Optional[str] = None
+
+
+@router.post("/portfolio/record-balance-change")
+def record_balance_change(body: BalanceAdjustmentBody, db: Session = Depends(get_db)):
+    from fastapi import HTTPException
+    from datetime import datetime
+
+    if body.amount == 0:
+        raise HTTPException(status_code=400, detail="Amount must be non-zero")
+
+    portfolio = get_portfolio(db)
+    new_balance = portfolio.usd_balance + body.amount
+    if new_balance < 0:
+        raise HTTPException(status_code=400, detail="Balance cannot go negative")
+
+    portfolio.usd_balance = new_balance
+    portfolio.updated_at = datetime.utcnow()
+
+    direction = "deposit" if body.amount > 0 else "withdrawal"
+    note = (body.note or "").strip()
+    trade = Trade(
+        timestamp=datetime.utcnow(),
+        action="BUY" if body.amount > 0 else "SELL",
+        xrp_amount=0.0,
+        usd_amount=abs(body.amount),
+        price_at_trade=0.0,
+        fee_usd=0.0,
+        fee_type="maker",
+        usd_balance_after=portfolio.usd_balance,
+        xrp_balance_after=portfolio.xrp_balance,
+        triggered_by="manual",
+        note=f"Manual {direction}: {note}" if note else f"Manual {direction}",
+    )
+    db.add(trade)
+    db.commit()
+
+    return {
+        "ok": True,
+        "change": body.amount,
+        "usd_balance": portfolio.usd_balance,
+        "xrp_balance": portfolio.xrp_balance,
+    }
+
+
+@router.post("/kraken/check-unexpected-balance-change")
+async def kraken_check_unexpected_balance_change(db: Session = Depends(get_db)):
+    from fastapi import HTTPException
+    from app.services import kraken_service
+    from app.services.settings_service import get_setting
+    from app.services.trading_service import get_portfolio
+    from datetime import datetime
+
+    api_key = get_setting(db, "kraken_api_key")
+    api_secret = get_setting(db, "kraken_api_secret")
+    pair = get_setting(db, "kraken_pair")
+    threshold = float(get_setting(db, "kraken_balance_delta_warn_threshold") or 0.01)
+    if not api_key or not api_secret:
+        raise HTTPException(status_code=400, detail="Kraken API credentials not configured")
+
+    try:
+        quote_currency = str(get_setting(db, "quote_currency")).upper()
+        balances = await kraken_service.get_balances(api_key, api_secret, quote_currency, pair)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    portfolio = get_portfolio(db)
+    usd_delta = balances["usd"] - portfolio.usd_balance
+    xrp_delta = balances["xrp"] - portfolio.xrp_balance
+
+    unexpected_quote_change = abs(usd_delta) >= threshold
+    unexpected_xrp_change = abs(xrp_delta) >= 0.000001
+
+    if unexpected_quote_change or unexpected_xrp_change:
+        portfolio.usd_balance = balances["usd"]
+        portfolio.xrp_balance = balances["xrp"]
+        portfolio.updated_at = datetime.utcnow()
+
+        direction = "deposit" if usd_delta > 0 else "withdrawal"
+        trade = Trade(
+            timestamp=datetime.utcnow(),
+            action="BUY" if usd_delta >= 0 else "SELL",
+            xrp_amount=0.0,
+            usd_amount=abs(usd_delta),
+            price_at_trade=0.0,
+            fee_usd=0.0,
+            fee_type="maker",
+            usd_balance_after=portfolio.usd_balance,
+            xrp_balance_after=portfolio.xrp_balance,
+            triggered_by="manual",
+            note=(
+                f"Auto-detected Kraken {direction} ({balances['quote_currency']}): {usd_delta:+.2f}; "
+                f"XRP delta: {xrp_delta:+.6f}"
+            ),
+        )
+        db.add(trade)
+        db.commit()
+
+    return {
+        "ok": True,
+        "unexpected_quote_change": unexpected_quote_change,
+        "unexpected_xrp_change": unexpected_xrp_change,
+        "usd_delta": usd_delta,
+        "xrp_delta": xrp_delta,
+        "quote_currency": balances["quote_currency"],
+        "kraken_usd": balances["usd"],
+        "kraken_xrp": balances["xrp"],
+        "local_usd": portfolio.usd_balance,
+        "local_xrp": portfolio.xrp_balance,
+    }
 # ---------------------------------------------------------------------------
 # Manual trade
 # ---------------------------------------------------------------------------
