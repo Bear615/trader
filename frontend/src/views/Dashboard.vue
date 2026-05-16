@@ -62,8 +62,6 @@ const roiPositive = computed(() => (roiPct.value ?? 0) >= 0)
 const roiLabel = computed(() => formatPercent(roiPct.value, 2, true))
 const currentPrice = computed(() => priceStore.current ? formatCurrency(priceStore.current.price, quoteCurrency.value, 6) : '-')
 const cashShare = computed(() => portfolioTotal.value > 0 ? quoteBalanceRaw.value / portfolioTotal.value * 100 : 0)
-const xrpShare = computed(() => portfolioTotal.value > 0 ? xrpValueRaw.value / portfolioTotal.value * 100 : 0)
-const riskUsed = computed(() => Math.min(100, Math.max(0, xrpShare.value)))
 const latestDecision = computed(() => aiStore.items[0])
 </script>
 
@@ -144,15 +142,6 @@ const latestDecision = computed(() => aiStore.items[0])
     </section>
 
     <section class="grid grid-cols-1 gap-3 md:grid-cols-3">
-      <div class="card-sm">
-        <div class="stat-label">Risk Used</div>
-        <div class="mt-2 flex items-center gap-3">
-          <div class="h-2 flex-1 overflow-hidden rounded-full bg-slate-800">
-            <div class="h-full rounded-full bg-amber-400" :style="{ width: riskUsed + '%' }" />
-          </div>
-          <span class="font-mono text-sm font-semibold tabular-nums text-slate-200">{{ riskUsed.toFixed(0) }}%</span>
-        </div>
-      </div>
       <div class="card-sm">
         <div class="stat-label">Average Entry</div>
         <div class="mt-1 font-mono text-lg font-bold tabular-nums text-slate-50">{{ averageEntry }}</div>
