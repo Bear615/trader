@@ -303,6 +303,15 @@ async def _execute_live_trade(
         portfolio.xrp_balance -= xrp_amount
         portfolio.usd_balance += usd_amount - fee_usd
 
+    # Post-trade balance sync from Kraken (authoritative live balances).
+    # This intentionally runs for every BUY/SELL to keep local state aligned.
+    try:
+        balances = await kraken_service.get_balances(api_key, api_secret, quote, pair)
+        portfolio.usd_balance = balances["usd"]
+        portfolio.xrp_balance = balances["xrp"]
+    except Exception as exc:
+        logger.warning("Kraken post-trade balance sync failed, using estimated balances: %s", exc)
+
     portfolio.updated_at = datetime.utcnow()
     db.flush()
 

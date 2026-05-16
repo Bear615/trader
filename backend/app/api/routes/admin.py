@@ -205,20 +205,36 @@ def clear_trade_history(db: Session = Depends(get_db)):
 @router.get("/export/trades")
 def export_trades_csv(db: Session = Depends(get_db)):
     trades = db.query(Trade).order_by(Trade.timestamp.asc()).all()
-    quote_currency = str(get_setting(db, "quote_currency")).upper().lower()
+    quote_currency = str(get_setting(db, "quote_currency")).upper()
+    quote_currency_lower = quote_currency.lower()
     output = io.StringIO()
     writer = csv.writer(output)
+    writer.writerow(["report", "xrp_trades_export"])
+    writer.writerow(["generated_at_utc", datetime.utcnow().isoformat() + "Z"])
+    writer.writerow(["quote_currency", quote_currency])
+    writer.writerow(["total_rows", len(trades)])
+    writer.writerow([])
     writer.writerow([
-        "id", "timestamp", "action", "xrp_amount", f"{quote_currency}_amount",
-        "price_at_trade", f"fee_{quote_currency}", "fee_type", "triggered_by",
-        f"{quote_currency}_balance_after", "xrp_balance_after", "ai_decision_id", "note",
-        "exchange_order_id",
+        "id", "timestamp_utc", "action", "xrp_amount", f"{quote_currency_lower}_gross_amount",
+        f"{quote_currency_lower}_net_amount", "price_at_trade", f"fee_{quote_currency_lower}", "fee_type", "triggered_by",
+        f"{quote_currency_lower}_balance_after", "xrp_balance_after", f"running_{quote_currency_lower}_fees",
+        f"running_realized_{quote_currency_lower}_pnl", "avg_entry_price_reference",
+        "ai_decision_id", "note", "exchange_order_id",
     ])
+    running_fees = 0.0
+    running_realized_pnl = 0.0
+    avg_buy = _avg_buy_price(db)
     for t in trades:
+        net_amount = t.usd_amount - t.fee_usd if t.action == "SELL" else t.usd_amount + t.fee_usd
+        pnl = t.pnl(avg_buy)
+        running_fees += t.fee_usd
+        if pnl is not None:
+            running_realized_pnl += pnl
         writer.writerow([
             t.id, t.timestamp.isoformat(), t.action, t.xrp_amount, t.usd_amount,
-            t.price_at_trade, t.fee_usd, t.fee_type, t.triggered_by,
-            t.usd_balance_after, t.xrp_balance_after, t.ai_decision_id, t.note,
+            net_amount, t.price_at_trade, t.fee_usd, t.fee_type, t.triggered_by,
+            t.usd_balance_after, t.xrp_balance_after, running_fees, running_realized_pnl,
+            avg_buy, t.ai_decision_id, t.note,
             t.exchange_order_id,
         ])
     output.seek(0)

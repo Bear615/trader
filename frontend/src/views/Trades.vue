@@ -8,6 +8,7 @@ import api from '@/api/client'
 const store = useTradesStore()
 const settingsStore = useSettingsStore()
 const expandedTradeId = ref<number | null>(null)
+const exportAnimating = ref(false)
 
 const totalPages = computed(() => Math.ceil(store.total / store.perPage))
 const quoteCurrency = computed(() => currencyCode(settingsStore.settings['quote_currency']))
@@ -33,6 +34,8 @@ function prevPage() {
 }
 
 async function exportCsv() {
+  if (exportAnimating.value) return
+  exportAnimating.value = true
   const res = await api.get('/admin/export/trades', { responseType: 'blob' })
   const url = URL.createObjectURL(res.data)
   const a = document.createElement('a')
@@ -40,6 +43,9 @@ async function exportCsv() {
   a.download = `xrp-${quoteCurrency.value.toLowerCase()}-trades.csv`
   a.click()
   URL.revokeObjectURL(url)
+  window.setTimeout(() => {
+    exportAnimating.value = false
+  }, 1100)
 }
 
 function pnlLabel(pnl: number | null) {
@@ -65,11 +71,12 @@ function toggleTrade(id: number) {
         <h1 class="view-title">Trades</h1>
         <p class="view-subtitle">History as scan-friendly cards, with table detail retained on desktop.</p>
       </div>
-      <button @click="exportCsv" class="btn btn-ghost btn-sm shrink-0">
+      <button @click="exportCsv" class="btn btn-ghost btn-sm shrink-0 overflow-hidden" :class="{ 'download-launch': exportAnimating }">
         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M5 19h14" />
         </svg>
         Export
+        <span aria-hidden="true" class="download-orb" />
       </button>
     </div>
 
