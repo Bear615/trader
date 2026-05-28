@@ -1,7 +1,9 @@
 import secrets
 import time
 
-from fastapi import Cookie, Header, HTTPException, status
+from urllib.parse import urlparse
+
+from fastapi import Cookie, Header, HTTPException, Request, status
 from app.core.config import config
 
 SESSION_COOKIE_NAME = "trader_admin_session"
@@ -34,10 +36,21 @@ def validate_admin_session(token: str | None) -> bool:
 
 
 async def require_admin(
+    request: Request,
     x_admin_key: str | None = Header(default=None),
     trader_admin_session: str | None = Cookie(default=None),
 ):
     if validate_admin_session(trader_admin_session):
+        if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+            origin = request.headers.get("origin")
+            if origin:
+                origin_host = urlparse(origin).netloc
+                allowed_hosts = {urlparse(o).netloc for o in config.cors_origins_list}
+                if origin_host and origin_host not in allowed_hosts:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Invalid request origin.",
+                    )
         return
     # Keep the header path for local scripts and non-browser clients.
     if x_admin_key and secrets.compare_digest(x_admin_key, config.admin_api_key):
