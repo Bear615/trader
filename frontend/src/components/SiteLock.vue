@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onUnmounted, ref } from 'vue'
 import axios from 'axios'
 import { usePinPad, NUMPAD_KEYS } from '@/composables/usePinPad'
 
@@ -10,6 +10,8 @@ const error = ref('')
 const loading = ref(false)
 const locked = ref(false)
 let lockTimer: ReturnType<typeof setTimeout> | null = null
+let retryTickTimer: ReturnType<typeof setInterval> | null = null
+const retrySeconds = ref(0)
 
 const PIN_LENGTH = 6
 
@@ -38,11 +40,21 @@ async function submit(pinValue: string) {
     if (axios.isAxiosError(e) && e.response?.status === 429) {
       locked.value = true
       error.value = e.response.data?.detail ?? 'Too many attempts. Please wait and try again.'
+      retrySeconds.value = Number(e.response.headers['retry-after'] || 60)
+      if (retryTickTimer) clearInterval(retryTickTimer)
+      retryTickTimer = setInterval(() => {
+        retrySeconds.value = Math.max(0, retrySeconds.value - 1)
+      }, 1000)
       lockTimer = setTimeout(() => {
         locked.value = false
         error.value = ''
+        retrySeconds.value = 0
+        if (retryTickTimer) {
+          clearInterval(retryTickTimer)
+          retryTickTimer = null
+        }
         lockTimer = null
-      }, 60_000)
+      }, retrySeconds.value * 1000)
     } else {
       error.value = 'Incorrect PIN.'
     }
@@ -50,6 +62,11 @@ async function submit(pinValue: string) {
     loading.value = false
   }
 }
+
+onUnmounted(() => {
+  if (lockTimer) clearTimeout(lockTimer)
+  if (retryTickTimer) clearInterval(retryTickTimer)
+})
 </script>
 
 <template>
@@ -82,7 +99,7 @@ async function submit(pinValue: string) {
 
         <div class="h-4 -mt-3 text-center">
           <p v-if="error" class="text-xs text-rose-400">{{ error }}</p>
-          <p v-else-if="locked" class="text-xs text-amber-500">Locked. Please wait...</p>
+          <p v-else-if="locked" class="text-xs text-amber-500">Locked. Please wait {{ retrySeconds }}s...</p>
           <div v-else-if="loading" class="flex justify-center">
             <div class="w-4 h-4 border border-amber-400 border-t-transparent rounded-full animate-spin" />
           </div>

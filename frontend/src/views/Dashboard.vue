@@ -19,6 +19,7 @@ const settingsStore = useSettingsStore()
 
 const timeframe = ref(String(settingsStore.settings['ui_chart_default_timeframe'] || '24h'))
 const timeframes = ['1h', '6h', '24h', '7d', '30d']
+const refreshing = ref(false)
 
 async function loadAll() {
   await Promise.all([
@@ -28,6 +29,16 @@ async function loadAll() {
     tradesStore.fetchTrades(1),
     aiStore.fetchDecisions(1),
   ])
+}
+
+async function manualRefresh() {
+  if (refreshing.value) return
+  refreshing.value = true
+  try {
+    await loadAll()
+  } finally {
+    refreshing.value = false
+  }
 }
 
 onMounted(() => {
@@ -73,9 +84,14 @@ const latestDecision = computed(() => aiStore.items[0])
         <h1 class="view-title">Dashboard</h1>
         <p class="view-subtitle">Live XRP/{{ quoteCurrency }} account health and trading flow.</p>
       </div>
-      <span class="app-chip" :class="isLiveMode ? 'border-rose-400/30 text-rose-300' : 'app-chip-active'">
-        {{ isLiveMode ? 'Live' : 'Paper' }}
-      </span>
+      <div class="flex items-center gap-2">
+        <button class="btn btn-ghost btn-sm min-h-[36px] min-w-[36px]" :disabled="refreshing" @click="manualRefresh">
+          {{ refreshing ? 'Refreshing…' : 'Refresh' }}
+        </button>
+        <span class="app-chip" :class="isLiveMode ? 'border-rose-400/30 text-rose-300' : 'app-chip-active'">
+          {{ isLiveMode ? 'Live' : 'Paper' }}
+        </span>
+      </div>
     </div>
 
     <section class="panel space-y-4 p-4">
