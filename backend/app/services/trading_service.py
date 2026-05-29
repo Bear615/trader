@@ -15,6 +15,7 @@ from app.models.portfolio import Portfolio
 from app.models.trade import Trade
 from app.models.ai_decision import AIDecision
 from app.services.settings_service import get_setting
+from app.services.pnl_service import compute_pnl_snapshot
 
 logger = logging.getLogger(__name__)
 
@@ -101,14 +102,9 @@ def _portfolio_drawdown_pct(portfolio: Portfolio, current_price: float) -> float
 
 
 def _avg_buy_price(db: Session) -> Optional[float]:
-    """Compute volume-weighted average buy price from trade history."""
-    buys = db.query(Trade).filter(Trade.action == "BUY").all()
-    if not buys:
-        return None
-    total_xrp = sum(t.xrp_amount for t in buys)
-    if total_xrp == 0:
-        return None
-    return sum(t.xrp_amount * t.price_at_trade for t in buys) / total_xrp
+    """Compute the current average entry for open XRP after matched sells."""
+    trades = db.query(Trade).order_by(Trade.timestamp.asc()).all()
+    return compute_pnl_snapshot(trades).avg_entry_price
 
 
 # ---------------------------------------------------------------------------
@@ -214,8 +210,9 @@ async def _execute_paper_trade(
     db.refresh(trade)
 
     # Broadcast trade + portfolio update
-    avg_buy = _avg_buy_price(db)
-    await ws_manager.broadcast("trades", trade.to_dict(avg_buy))
+    trades = db.query(Trade).order_by(Trade.timestamp.asc()).all()
+    pnl = compute_pnl_snapshot(trades)
+    await ws_manager.broadcast("trades", trade.to_dict(pnl.per_trade_pnl.get(trade.id)))
 
     from app.services.telegram_service import notify_trade
     await notify_trade(db, trade)
@@ -334,8 +331,9 @@ async def _execute_live_trade(
     db.commit()
     db.refresh(trade)
 
-    avg_buy = _avg_buy_price(db)
-    await ws_manager.broadcast("trades", trade.to_dict(avg_buy))
+    trades = db.query(Trade).order_by(Trade.timestamp.asc()).all()
+    pnl = compute_pnl_snapshot(trades)
+    await ws_manager.broadcast("trades", trade.to_dict(pnl.per_trade_pnl.get(trade.id)))
 
     from app.services.telegram_service import notify_trade
     await notify_trade(db, trade)

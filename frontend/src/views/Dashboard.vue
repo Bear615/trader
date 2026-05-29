@@ -20,6 +20,7 @@ const settingsStore = useSettingsStore()
 const timeframe = ref(String(settingsStore.settings['ui_chart_default_timeframe'] || '24h'))
 const timeframes = ['1h', '6h', '24h', '7d', '30d']
 const refreshing = ref(false)
+const resettingRoi = ref(false)
 
 async function loadAll() {
   await Promise.all([
@@ -38,6 +39,17 @@ async function manualRefresh() {
     await loadAll()
   } finally {
     refreshing.value = false
+  }
+}
+
+async function resetRoiBaseline() {
+  if (resettingRoi.value) return
+  resettingRoi.value = true
+  try {
+    await portfolioStore.resetROI()
+    await portfolioStore.fetchMetrics()
+  } finally {
+    resettingRoi.value = false
   }
 }
 
@@ -71,6 +83,13 @@ const averageEntry = computed(() => m.value?.avg_buy_price ? formatCurrency(m.va
 const roiPct = computed(() => p.value?.roi_pct ?? m.value?.roi_pct ?? null)
 const roiPositive = computed(() => (roiPct.value ?? 0) >= 0)
 const roiLabel = computed(() => formatPercent(roiPct.value, 2, true))
+const roiBaseline = computed(() => formatCurrency(p.value?.starting_budget ?? m.value?.starting_budget, quoteCurrency.value, 2))
+const realizedPnlRaw = computed(() => m.value?.realized_pnl_usd ?? 0)
+const unrealizedPnlRaw = computed(() => m.value?.unrealized_pnl_usd ?? 0)
+const totalPnlRaw = computed(() => m.value?.total_pnl_usd ?? realizedPnlRaw.value + unrealizedPnlRaw.value)
+const realizedPnl = computed(() => formatCurrency(realizedPnlRaw.value, quoteCurrency.value, 2))
+const unrealizedPnl = computed(() => formatCurrency(unrealizedPnlRaw.value, quoteCurrency.value, 2))
+const totalPnl = computed(() => formatCurrency(totalPnlRaw.value, quoteCurrency.value, 2))
 const currentPrice = computed(() => priceStore.current ? formatCurrency(priceStore.current.price, quoteCurrency.value, 6) : '-')
 const cashShare = computed(() => portfolioTotal.value > 0 ? quoteBalanceRaw.value / portfolioTotal.value * 100 : 0)
 const latestDecision = computed(() => aiStore.items[0])
@@ -112,9 +131,15 @@ const latestDecision = computed(() => aiStore.items[0])
 
       <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
         <div class="card-sm">
-          <div class="stat-label">Portfolio</div>
+          <div class="flex items-center justify-between gap-2">
+            <div class="stat-label">Portfolio</div>
+            <button class="text-[11px] font-semibold text-blue-300 hover:text-blue-200 disabled:opacity-50" :disabled="resettingRoi" @click="resetRoiBaseline">
+              {{ resettingRoi ? 'Resetting…' : 'Reset ROI' }}
+            </button>
+          </div>
           <div class="mt-1 font-mono text-xl font-bold tabular-nums text-slate-50">{{ portfolioValue }}</div>
           <div class="mt-1 text-xs" :class="roiPositive ? 'text-emerald-400' : 'text-rose-400'">{{ roiLabel }} ROI</div>
+          <div class="mt-1 text-[11px] text-slate-500">Baseline {{ roiBaseline }}</div>
         </div>
         <div class="card-sm">
           <div class="stat-label">{{ quoteCurrency }} Cash</div>
@@ -157,11 +182,26 @@ const latestDecision = computed(() => aiStore.items[0])
       <PriceChart :data="priceStore.history" :loading="priceStore.loading" :quote-currency="quoteCurrency" />
     </section>
 
-    <section class="grid grid-cols-1 gap-3 md:grid-cols-3">
+    <section class="grid grid-cols-1 gap-3 md:grid-cols-5">
       <div class="card-sm">
         <div class="stat-label">Average Entry</div>
         <div class="mt-1 font-mono text-lg font-bold tabular-nums text-slate-50">{{ averageEntry }}</div>
         <div class="text-xs text-slate-500">Per XRP</div>
+      </div>
+      <div class="card-sm">
+        <div class="stat-label">Realized P&L</div>
+        <div class="mt-1 font-mono text-lg font-bold tabular-nums" :class="realizedPnlRaw >= 0 ? 'text-emerald-400' : 'text-rose-400'">{{ realizedPnl }}</div>
+        <div class="text-xs text-slate-500">Closed sells</div>
+      </div>
+      <div class="card-sm">
+        <div class="stat-label">Unrealized P&L</div>
+        <div class="mt-1 font-mono text-lg font-bold tabular-nums" :class="unrealizedPnlRaw >= 0 ? 'text-emerald-400' : 'text-rose-400'">{{ unrealizedPnl }}</div>
+        <div class="text-xs text-slate-500">Open XRP</div>
+      </div>
+      <div class="card-sm">
+        <div class="stat-label">Total Trading P&L</div>
+        <div class="mt-1 font-mono text-lg font-bold tabular-nums" :class="totalPnlRaw >= 0 ? 'text-emerald-400' : 'text-rose-400'">{{ totalPnl }}</div>
+        <div class="text-xs text-slate-500">Realized + open</div>
       </div>
       <div class="card-sm">
         <div class="stat-label">Latest AI</div>
