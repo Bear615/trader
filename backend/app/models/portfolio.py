@@ -27,13 +27,11 @@ class Portfolio(Base):
         quote_currency: str = "USD",
         avg_buy_price: float | None = None,
     ):
-        xrp_value = self.xrp_value_quote(current_price) if current_price else None
-        total = self.total_value_usd(current_price) if current_price else None
+        xrp_value = self.xrp_value_quote(current_price) if current_price is not None else None
+        total = self.total_value_usd(current_price) if current_price is not None else None
         roi = None
-        if xrp_value is not None and avg_buy_price and self.xrp_balance:
-            cost_basis = avg_buy_price * self.xrp_balance
-            if cost_basis > 0:
-                roi = ((xrp_value - cost_basis) / cost_basis) * 100
+        if total is not None and self.starting_budget > 0:
+            roi = ((total - self.starting_budget) / self.starting_budget) * 100
         return {
             "id": self.id,
             "usd_balance": self.usd_balance,

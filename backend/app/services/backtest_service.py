@@ -381,6 +381,7 @@ def _compute_live_metrics(db: Session, current_price: float) -> dict[str, Any]:
     """Compute live portfolio metrics for the /api/v1/metrics endpoint."""
     from app.services.trading_service import get_portfolio
     from app.services.settings_service import get_setting
+    from app.services.pnl_service import compute_pnl_snapshot, total_return_pct
     from app.models.trade import Trade
 
     portfolio = get_portfolio(db)
@@ -389,38 +390,30 @@ def _compute_live_metrics(db: Session, current_price: float) -> dict[str, Any]:
     xrp_value = portfolio.xrp_balance * current_price
 
     all_trades = db.query(Trade).order_by(Trade.timestamp.asc()).all()
+    xrp_trades = [t for t in all_trades if t.xrp_amount > 0 and t.price_at_trade > 0]
+    buy_trades = [t for t in xrp_trades if t.action == "BUY"]
+    sell_trades = [t for t in xrp_trades if t.action == "SELL"]
 
-    buy_trades = [t for t in all_trades if t.action == "BUY"]
-    sell_trades = [t for t in all_trades if t.action == "SELL"]
-
-    # Simple win rate: sells above their avg cost
-    total_xrp_bought = 0.0
-    total_usd_spent = 0.0
-    profitable_sells = 0
-    for t in all_trades:
-        if t.action == "BUY":
-            total_xrp_bought += t.xrp_amount
-            total_usd_spent += t.usd_amount
-    avg_cost = (total_usd_spent / total_xrp_bought) if total_xrp_bought > 0 else 0
-    current_xrp_cost_basis = avg_cost * portfolio.xrp_balance if avg_cost and portfolio.xrp_balance else 0
-    roi = ((xrp_value - current_xrp_cost_basis) / current_xrp_cost_basis * 100) if current_xrp_cost_basis else 0
-    for t in sell_trades:
-        if t.price_at_trade > avg_cost:
-            profitable_sells += 1
+    pnl = compute_pnl_snapshot(all_trades, current_price)
+    profitable_sells = sum(1 for t in sell_trades if (pnl.per_trade_pnl.get(t.id) or 0) > 0)
     win_rate = (profitable_sells / len(sell_trades) * 100) if sell_trades else 0.0
-
-    total_fees = sum(t.fee_usd for t in all_trades)
+    total_fees = sum(t.fee_usd for t in xrp_trades)
+    roi = total_return_pct(total_value, portfolio.starting_budget)
 
     return {
         "total_value_usd": total_value,
         "xrp_value_quote": xrp_value,
         "quote_currency": quote_currency,
-        "roi_pct": round(roi, 4),
-        "total_trades": len(all_trades),
+        "roi_pct": round(roi, 4) if roi is not None else 0,
+        "realized_pnl_usd": round(pnl.realized_pnl, 4),
+        "unrealized_pnl_usd": round(pnl.unrealized_pnl, 4),
+        "total_pnl_usd": round(pnl.realized_pnl + pnl.unrealized_pnl, 4),
+        "open_cost_basis_usd": round(pnl.remaining_cost_basis, 4),
+        "total_trades": len(xrp_trades),
         "buy_count": len(buy_trades),
         "sell_count": len(sell_trades),
         "win_rate_pct": round(win_rate, 2),
-        "avg_buy_price": round(avg_cost, 6) if avg_cost else None,
+        "avg_buy_price": round(pnl.avg_entry_price, 6) if pnl.avg_entry_price else None,
         "total_fees_usd": round(total_fees, 4),
         "xrp_balance": portfolio.xrp_balance,
         "usd_balance": portfolio.usd_balance,

@@ -45,8 +45,13 @@ async def require_admin(
             origin = request.headers.get("origin")
             if origin:
                 origin_host = urlparse(origin).netloc
+                request_host = request.headers.get("host", "")
                 allowed_hosts = {urlparse(o).netloc for o in config.cors_origins_list}
-                if origin_host and origin_host not in allowed_hosts:
+                # Same-origin deployments should not have to duplicate their
+                # public host in CORS_ORIGINS just to allow state-changing
+                # dashboard actions such as resetting ROI. Cross-origin POSTs
+                # still have to match the explicit CORS allow-list.
+                if origin_host and origin_host != request_host and origin_host not in allowed_hosts:
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
                         detail="Invalid request origin.",

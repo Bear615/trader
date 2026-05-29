@@ -21,6 +21,7 @@ from app.services.settings_service import (
     get_setting,
 )
 from app.services.trading_service import reset_portfolio, reset_roi, get_portfolio, execute_trade, _avg_buy_price
+from app.services.pnl_service import compute_pnl_snapshot
 from app.services.price_service import get_latest_price, seed_from_coingecko, prune_old_prices
 from app.services.backtest_service import run_backtest
 from app.models.price import PricePoint
@@ -113,13 +114,17 @@ async def update_settings(body: SettingsUpdate, db: Session = Depends(get_db)):
 @router.post("/portfolio/reset")
 def reset(db: Session = Depends(get_db)):
     portfolio = reset_portfolio(db)
-    return portfolio.to_dict(quote_currency=str(get_setting(db, "quote_currency")).upper(), avg_buy_price=_avg_buy_price(db))
+    latest = get_latest_price(db)
+    current_price = latest.price if latest else None
+    return portfolio.to_dict(current_price, str(get_setting(db, "quote_currency")).upper(), _avg_buy_price(db))
 
 
 @router.post("/portfolio/reset-roi")
 def reset_roi_endpoint(db: Session = Depends(get_db)):
     portfolio = reset_roi(db)
-    return portfolio.to_dict(quote_currency=str(get_setting(db, "quote_currency")).upper(), avg_buy_price=_avg_buy_price(db))
+    latest = get_latest_price(db)
+    current_price = latest.price if latest else None
+    return portfolio.to_dict(current_price, str(get_setting(db, "quote_currency")).upper(), _avg_buy_price(db))
 
 
 
@@ -264,7 +269,9 @@ async def manual_trade(body: ManualTradeBody, db: Session = Depends(get_db)):
     if err:
         from fastapi import HTTPException
         raise HTTPException(status_code=400, detail=err)
-    return trade.to_dict()
+    trades = db.query(Trade).order_by(Trade.timestamp.asc()).all()
+    pnl = compute_pnl_snapshot(trades)
+    return trade.to_dict(pnl.per_trade_pnl.get(trade.id))
 
 
 # ---------------------------------------------------------------------------
@@ -337,10 +344,10 @@ def export_trades_csv(db: Session = Depends(get_db)):
     ])
     running_fees = 0.0
     running_realized_pnl = 0.0
-    avg_buy = _avg_buy_price(db)
+    pnl_snapshot = compute_pnl_snapshot(trades)
     for t in trades:
         net_amount = t.usd_amount - t.fee_usd if t.action == "SELL" else t.usd_amount + t.fee_usd
-        pnl = t.pnl(avg_buy)
+        pnl = pnl_snapshot.per_trade_pnl.get(t.id)
         running_fees += t.fee_usd
         if pnl is not None:
             running_realized_pnl += pnl
@@ -348,7 +355,7 @@ def export_trades_csv(db: Session = Depends(get_db)):
             t.id, t.timestamp.isoformat(), t.action, t.xrp_amount, t.usd_amount,
             net_amount, t.price_at_trade, t.fee_usd, t.fee_type, t.triggered_by,
             t.usd_balance_after, t.xrp_balance_after, running_fees, running_realized_pnl,
-            avg_buy, t.ai_decision_id, t.note,
+            pnl_snapshot.avg_entry_price, t.ai_decision_id, t.note,
             t.exchange_order_id,
         ])
     output.seek(0)
