@@ -49,7 +49,9 @@ def compute_pnl_snapshot(trades: Iterable[Any], current_price: float | None = No
         avg_cost = cost_basis / open_xrp
         sold_xrp = min(trade.xrp_amount, open_xrp)
         sold_cost_basis = avg_cost * sold_xrp
-        proceeds = trade.usd_amount - trade.fee_usd
+        net_proceeds = trade.usd_amount - trade.fee_usd
+        proceeds_ratio = sold_xrp / trade.xrp_amount
+        proceeds = net_proceeds * proceeds_ratio
         pnl = proceeds - sold_cost_basis
 
         snapshot.per_trade_pnl[trade.id] = pnl
