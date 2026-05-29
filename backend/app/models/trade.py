@@ -21,13 +21,11 @@ class Trade(Base):
     note = Column(String, nullable=True)
     exchange_order_id = Column(String, nullable=True)  # Kraken txid when trading_mode == 'live'
 
-    def pnl(self, avg_buy_price: float | None = None) -> float | None:
-        """Rough P&L for SELL trades when avg_buy_price is passed in."""
-        if self.action == "SELL" and avg_buy_price is not None:
-            return (self.price_at_trade - avg_buy_price) * self.xrp_amount - self.fee_usd
-        return None
+    def pnl(self, realized_pnl: float | None = None) -> float | None:
+        """Return precomputed realized P&L for SELL trades."""
+        return realized_pnl if self.action == "SELL" else None
 
-    def to_dict(self, avg_buy_price: float | None = None):
+    def to_dict(self, realized_pnl: float | None = None):
         return {
             "id": self.id,
             "timestamp": self.timestamp.isoformat() + "Z",
@@ -41,7 +39,7 @@ class Trade(Base):
             "xrp_balance_after": self.xrp_balance_after,
             "ai_decision_id": self.ai_decision_id,
             "triggered_by": self.triggered_by,
-            "pnl": self.pnl(avg_buy_price),
+            "pnl": self.pnl(realized_pnl),
             "note": self.note,
             "exchange_order_id": self.exchange_order_id,
         }

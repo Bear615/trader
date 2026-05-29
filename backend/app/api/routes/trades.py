@@ -5,7 +5,7 @@ from typing import Optional
 from app.core.database import get_db
 from app.core.auth import require_admin
 from app.models.trade import Trade
-from app.services.trading_service import _avg_buy_price
+from app.services.pnl_service import compute_pnl_snapshot
 
 router = APIRouter(prefix="/trades", tags=["trades"], dependencies=[Depends(require_admin)])
 
@@ -22,12 +22,13 @@ def list_trades(
         q = q.filter(Trade.action == action.upper())
     total = q.count()
     trades = q.offset((page - 1) * per_page).limit(per_page).all()
-    avg_buy = _avg_buy_price(db)
+    all_trades = db.query(Trade).order_by(Trade.timestamp.asc()).all()
+    pnl = compute_pnl_snapshot(all_trades)
     return {
         "total": total,
         "page": page,
         "per_page": per_page,
-        "items": [t.to_dict(avg_buy) for t in trades],
+        "items": [t.to_dict(pnl.per_trade_pnl.get(t.id)) for t in trades],
     }
 
 
@@ -37,5 +38,6 @@ def get_trade(trade_id: int, db: Session = Depends(get_db)):
     if not trade:
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Trade not found")
-    avg_buy = _avg_buy_price(db)
-    return trade.to_dict(avg_buy)
+    all_trades = db.query(Trade).order_by(Trade.timestamp.asc()).all()
+    pnl = compute_pnl_snapshot(all_trades)
+    return trade.to_dict(pnl.per_trade_pnl.get(trade.id))

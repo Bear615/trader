@@ -57,6 +57,10 @@ export interface Metrics {
   xrp_value_quote?: number
   quote_currency?: string
   roi_pct: number
+  realized_pnl_usd?: number
+  unrealized_pnl_usd?: number
+  total_pnl_usd?: number
+  open_cost_basis_usd?: number
   total_trades: number
   buy_count: number
   sell_count: number
