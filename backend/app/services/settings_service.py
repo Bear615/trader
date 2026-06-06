@@ -31,6 +31,11 @@ DEFAULTS: dict[str, tuple[Any, str]] = {
     "starting_budget_usd":              (10000.0, "Initial quote-currency balance when the portfolio is reset"),
     "maker_fee_pct":                    (0.1,   "Maker fee percentage (e.g. 0.1 = 0.1%)"),
     "taker_fee_pct":                    (0.1,   "Taker fee percentage (e.g. 0.1 = 0.1%)"),
+    "pnl_reset_at":                     (None,  "UTC timestamp for the current P&L calculator reset baseline"),
+    "pnl_reset_trade_id":               (None,  "Last trade id included before the current P&L reset baseline"),
+    "pnl_reset_open_xrp":               (0.0,   "Open XRP balance carried into the current P&L reset baseline"),
+    "pnl_reset_cost_basis_usd":         (0.0,   "Quote-currency cost basis carried into the current P&L reset baseline"),
+    "pnl_reset_price":                  (None,  "XRP price used when the current P&L reset baseline was created"),
 
     # --- AI Provider ---
     "ai_provider_preset":               ("openai", "Provider preset. Options: openai, ollama, groq, together, openrouter, lm-studio, custom"),

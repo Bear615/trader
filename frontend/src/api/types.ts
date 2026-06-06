@@ -67,6 +67,7 @@ export interface Metrics {
   win_rate_pct: number
   avg_buy_price: number | null
   total_fees_usd: number
+  pnl_reset_at?: string | null
   xrp_balance: number
   usd_balance: number
   starting_budget: number
@@ -119,4 +120,17 @@ export interface PaginatedResponse<T> {
   page: number
   per_page: number
   items: T[]
+}
+
+
+export interface PnlReport {
+  reset_at: string | null
+  reset_trade_id: number | null
+  realized_pnl_usd: number
+  winning_pnl_usd: number
+  losing_pnl_usd: number
+  trade_count: number
+  win_count: number
+  loss_count: number
+  items: Trade[]
 }

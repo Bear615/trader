@@ -21,7 +21,7 @@ from app.services.settings_service import (
     get_setting,
 )
 from app.services.trading_service import reset_portfolio, reset_roi, get_portfolio, execute_trade, _avg_buy_price
-from app.services.pnl_service import compute_pnl_snapshot
+from app.services.pnl_service import compute_pnl_snapshot, get_pnl_reset_state, reset_pnl_baseline
 from app.services.price_service import get_latest_price, seed_from_coingecko, prune_old_prices
 from app.services.backtest_service import run_backtest
 from app.models.price import PricePoint
@@ -126,6 +126,27 @@ def reset_roi_endpoint(db: Session = Depends(get_db)):
     current_price = latest.price if latest else None
     return portfolio.to_dict(current_price, str(get_setting(db, "quote_currency")).upper(), _avg_buy_price(db))
 
+
+
+
+@router.post("/portfolio/reset-pnl")
+def reset_pnl_endpoint(db: Session = Depends(get_db)):
+    latest = get_latest_price(db)
+    current_price = latest.price if latest else None
+    reset_state = reset_pnl_baseline(db, current_price)
+    trades = db.query(Trade).order_by(Trade.timestamp.asc()).all()
+    pnl = compute_pnl_snapshot(trades, current_price, reset_state=reset_state)
+    return {
+        "ok": True,
+        "reset_at": reset_state.reset_at.isoformat() + "Z" if reset_state.reset_at else None,
+        "reset_trade_id": reset_state.reset_trade_id,
+        "open_xrp": reset_state.open_xrp,
+        "cost_basis": reset_state.cost_basis,
+        "price": reset_state.price,
+        "realized_pnl_usd": round(pnl.realized_pnl, 4),
+        "unrealized_pnl_usd": round(pnl.unrealized_pnl, 4),
+        "total_pnl_usd": round(pnl.realized_pnl + pnl.unrealized_pnl, 4),
+    }
 
 
 
@@ -270,7 +291,7 @@ async def manual_trade(body: ManualTradeBody, db: Session = Depends(get_db)):
         from fastapi import HTTPException
         raise HTTPException(status_code=400, detail=err)
     trades = db.query(Trade).order_by(Trade.timestamp.asc()).all()
-    pnl = compute_pnl_snapshot(trades)
+    pnl = compute_pnl_snapshot(trades, reset_state=get_pnl_reset_state(db))
     return trade.to_dict(pnl.per_trade_pnl.get(trade.id))
 
 
@@ -344,7 +365,7 @@ def export_trades_csv(db: Session = Depends(get_db)):
     ])
     running_fees = 0.0
     running_realized_pnl = 0.0
-    pnl_snapshot = compute_pnl_snapshot(trades)
+    pnl_snapshot = compute_pnl_snapshot(trades, reset_state=get_pnl_reset_state(db))
     for t in trades:
         net_amount = t.usd_amount - t.fee_usd if t.action == "SELL" else t.usd_amount + t.fee_usd
         pnl = pnl_snapshot.per_trade_pnl.get(t.id)

@@ -15,7 +15,7 @@ from app.models.portfolio import Portfolio
 from app.models.trade import Trade
 from app.models.ai_decision import AIDecision
 from app.services.settings_service import get_setting
-from app.services.pnl_service import compute_pnl_snapshot
+from app.services.pnl_service import compute_pnl_snapshot, get_pnl_reset_state
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +104,7 @@ def _portfolio_drawdown_pct(portfolio: Portfolio, current_price: float) -> float
 def _avg_buy_price(db: Session) -> Optional[float]:
     """Compute the current average entry for open XRP after matched sells."""
     trades = db.query(Trade).order_by(Trade.timestamp.asc()).all()
-    return compute_pnl_snapshot(trades).avg_entry_price
+    return compute_pnl_snapshot(trades, reset_state=get_pnl_reset_state(db)).avg_entry_price
 
 
 # ---------------------------------------------------------------------------
@@ -211,7 +211,7 @@ async def _execute_paper_trade(
 
     # Broadcast trade + portfolio update
     trades = db.query(Trade).order_by(Trade.timestamp.asc()).all()
-    pnl = compute_pnl_snapshot(trades)
+    pnl = compute_pnl_snapshot(trades, reset_state=get_pnl_reset_state(db))
     await ws_manager.broadcast("trades", trade.to_dict(pnl.per_trade_pnl.get(trade.id)))
 
     from app.services.telegram_service import notify_trade
@@ -332,7 +332,7 @@ async def _execute_live_trade(
     db.refresh(trade)
 
     trades = db.query(Trade).order_by(Trade.timestamp.asc()).all()
-    pnl = compute_pnl_snapshot(trades)
+    pnl = compute_pnl_snapshot(trades, reset_state=get_pnl_reset_state(db))
     await ws_manager.broadcast("trades", trade.to_dict(pnl.per_trade_pnl.get(trade.id)))
 
     from app.services.telegram_service import notify_trade

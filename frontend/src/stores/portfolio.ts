@@ -33,5 +33,10 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     portfolio.value = res.data
   }
 
-  return { portfolio, metrics, loading, fetchPortfolio, fetchMetrics, resetPortfolio, resetROI }
+  async function resetPnl() {
+    await api.post('/admin/portfolio/reset-pnl')
+    await fetchMetrics()
+  }
+
+  return { portfolio, metrics, loading, fetchPortfolio, fetchMetrics, resetPortfolio, resetROI, resetPnl }
 })

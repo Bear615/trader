@@ -381,7 +381,7 @@ def _compute_live_metrics(db: Session, current_price: float) -> dict[str, Any]:
     """Compute live portfolio metrics for the /api/v1/metrics endpoint."""
     from app.services.trading_service import get_portfolio
     from app.services.settings_service import get_setting
-    from app.services.pnl_service import compute_pnl_snapshot, total_return_pct
+    from app.services.pnl_service import compute_pnl_snapshot, get_pnl_reset_state, total_return_pct
     from app.models.trade import Trade
 
     portfolio = get_portfolio(db)
@@ -394,7 +394,8 @@ def _compute_live_metrics(db: Session, current_price: float) -> dict[str, Any]:
     buy_trades = [t for t in xrp_trades if t.action == "BUY"]
     sell_trades = [t for t in xrp_trades if t.action == "SELL"]
 
-    pnl = compute_pnl_snapshot(all_trades, current_price)
+    reset_state = get_pnl_reset_state(db)
+    pnl = compute_pnl_snapshot(all_trades, current_price, reset_state=reset_state)
     profitable_sells = sum(1 for t in sell_trades if (pnl.per_trade_pnl.get(t.id) or 0) > 0)
     win_rate = (profitable_sells / len(sell_trades) * 100) if sell_trades else 0.0
     total_fees = sum(t.fee_usd for t in xrp_trades)
@@ -414,6 +415,7 @@ def _compute_live_metrics(db: Session, current_price: float) -> dict[str, Any]:
         "sell_count": len(sell_trades),
         "win_rate_pct": round(win_rate, 2),
         "avg_buy_price": round(pnl.avg_entry_price, 6) if pnl.avg_entry_price else None,
+        "pnl_reset_at": reset_state.reset_at.isoformat() + "Z" if reset_state and reset_state.reset_at else None,
         "total_fees_usd": round(total_fees, 4),
         "xrp_balance": portfolio.xrp_balance,
         "usd_balance": portfolio.usd_balance,
