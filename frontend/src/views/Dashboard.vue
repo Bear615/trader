@@ -107,6 +107,7 @@ const realizedPnl = computed(() => formatCurrency(realizedPnlRaw.value, quoteCur
 const unrealizedPnl = computed(() => formatCurrency(unrealizedPnlRaw.value, quoteCurrency.value, 2))
 const totalPnl = computed(() => formatCurrency(totalPnlRaw.value, quoteCurrency.value, 2))
 const pnlResetAt = computed(() => m.value?.pnl_reset_at ? new Date(m.value.pnl_reset_at).toLocaleString() : 'All-time')
+const lastPnlResetLabel = computed(() => portfolioStore.lastPnlResetAt ? new Date(portfolioStore.lastPnlResetAt).toLocaleTimeString() : null)
 const currentPrice = computed(() => priceStore.current ? formatCurrency(priceStore.current.price, quoteCurrency.value, 6) : '-')
 const cashShare = computed(() => portfolioTotal.value > 0 ? quoteBalanceRaw.value / portfolioTotal.value * 100 : 0)
 const latestDecision = computed(() => aiStore.items[0])
@@ -226,7 +227,7 @@ const latestDecision = computed(() => aiStore.items[0])
           </button>
         </div>
         <button class="mt-1 block w-full text-left font-mono text-lg font-bold tabular-nums" :class="totalPnlRaw >= 0 ? 'text-emerald-400' : 'text-rose-400'" @click="openPnlReport">{{ totalPnl }}</button>
-        <div class="text-xs text-slate-500">Realized + open · tap value</div>
+        <div class="text-xs" :class="lastPnlResetLabel ? 'text-emerald-300' : 'text-slate-500'">{{ lastPnlResetLabel ? `Reset applied ${lastPnlResetLabel}` : 'Realized + open · tap value' }}</div>
       </div>
       <div class="card-sm">
         <div class="stat-label">Latest AI</div>

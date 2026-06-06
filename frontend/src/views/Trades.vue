@@ -16,6 +16,7 @@ const totalPages = computed(() => Math.ceil(store.total / store.perPage))
 const quoteCurrency = computed(() => currencyCode(settingsStore.settings['quote_currency']))
 const visiblePnl = computed(() => store.items.reduce((sum, trade) => sum + (trade.pnl ?? 0), 0))
 const visiblePnlClass = computed(() => visiblePnl.value >= 0 ? 'text-emerald-400' : 'text-rose-400')
+const lastPnlResetLabel = computed(() => portfolioStore.lastPnlResetAt ? new Date(portfolioStore.lastPnlResetAt).toLocaleTimeString() : null)
 const buyCount = computed(() => store.items.filter((trade) => trade.action === 'BUY').length)
 const sellCount = computed(() => store.items.filter((trade) => trade.action === 'SELL').length)
 
@@ -85,9 +86,12 @@ function toggleTrade(id: number) {
       </div>
       <div class="flex shrink-0 flex-col gap-2 sm:flex-row">
         <button @click="openPnlReport" class="btn btn-primary btn-sm">P&amp;L report ↗</button>
-        <button @click="resetPnlCalculators" :disabled="resettingPnl" class="btn btn-ghost btn-sm">
-          {{ resettingPnl ? 'Resetting…' : 'Reset P&L' }}
-        </button>
+        <div class="flex flex-col gap-1">
+          <button @click="resetPnlCalculators" :disabled="resettingPnl" class="btn btn-ghost btn-sm">
+            {{ resettingPnl ? 'Resetting…' : 'Reset P&L' }}
+          </button>
+          <span v-if="lastPnlResetLabel" class="text-center text-[11px] font-semibold text-emerald-300">Reset applied {{ lastPnlResetLabel }}</span>
+        </div>
         <button @click="exportCsv" class="btn btn-ghost btn-sm">
           <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M5 19h14" />
