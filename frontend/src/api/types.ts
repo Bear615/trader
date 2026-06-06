@@ -74,6 +74,20 @@ export interface Metrics {
   current_price: number
 }
 
+
+export interface ResetPnlResponse {
+  ok: boolean
+  reset_at: string | null
+  reset_trade_id: number | null
+  open_xrp: number
+  cost_basis: number
+  open_cost_basis_usd?: number
+  price: number | null
+  realized_pnl_usd: number
+  unrealized_pnl_usd: number
+  total_pnl_usd: number
+}
+
 export interface BacktestRun {
   id: number
   created_at: string

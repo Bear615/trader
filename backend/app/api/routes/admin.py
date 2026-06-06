@@ -142,6 +142,7 @@ def reset_pnl_endpoint(db: Session = Depends(get_db)):
         "reset_trade_id": reset_state.reset_trade_id,
         "open_xrp": reset_state.open_xrp,
         "cost_basis": reset_state.cost_basis,
+        "open_cost_basis_usd": round(pnl.remaining_cost_basis, 4),
         "price": reset_state.price,
         "realized_pnl_usd": round(pnl.realized_pnl, 4),
         "unrealized_pnl_usd": round(pnl.unrealized_pnl, 4),
