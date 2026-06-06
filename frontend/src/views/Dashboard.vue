@@ -21,6 +21,7 @@ const timeframe = ref(String(settingsStore.settings['ui_chart_default_timeframe'
 const timeframes = ['1h', '6h', '24h', '7d', '30d']
 const refreshing = ref(false)
 const resettingRoi = ref(false)
+const resettingPnl = ref(false)
 
 async function loadAll() {
   await Promise.all([
@@ -51,6 +52,21 @@ async function resetRoiBaseline() {
   } finally {
     resettingRoi.value = false
   }
+}
+
+async function resetPnlCalculators() {
+  if (resettingPnl.value) return
+  resettingPnl.value = true
+  try {
+    await portfolioStore.resetPnl()
+    await tradesStore.fetchTrades(1)
+  } finally {
+    resettingPnl.value = false
+  }
+}
+
+function openPnlReport() {
+  window.open('/pnl', '_blank', 'noopener,noreferrer')
 }
 
 onMounted(() => {
@@ -90,6 +106,7 @@ const totalPnlRaw = computed(() => m.value?.total_pnl_usd ?? realizedPnlRaw.valu
 const realizedPnl = computed(() => formatCurrency(realizedPnlRaw.value, quoteCurrency.value, 2))
 const unrealizedPnl = computed(() => formatCurrency(unrealizedPnlRaw.value, quoteCurrency.value, 2))
 const totalPnl = computed(() => formatCurrency(totalPnlRaw.value, quoteCurrency.value, 2))
+const pnlResetAt = computed(() => m.value?.pnl_reset_at ? new Date(m.value.pnl_reset_at).toLocaleString() : 'All-time')
 const currentPrice = computed(() => priceStore.current ? formatCurrency(priceStore.current.price, quoteCurrency.value, 6) : '-')
 const cashShare = computed(() => portfolioTotal.value > 0 ? quoteBalanceRaw.value / portfolioTotal.value * 100 : 0)
 const latestDecision = computed(() => aiStore.items[0])
@@ -188,20 +205,28 @@ const latestDecision = computed(() => aiStore.items[0])
         <div class="mt-1 font-mono text-lg font-bold tabular-nums text-slate-50">{{ averageEntry }}</div>
         <div class="text-xs text-slate-500">Per XRP</div>
       </div>
-      <div class="card-sm">
-        <div class="stat-label">Realized P&L</div>
+      <button class="pnl-tile text-left" @click="openPnlReport" title="Open P&L report in a new tab">
+        <div class="flex items-center justify-between gap-2">
+          <div class="stat-label">Realized P&amp;L</div>
+          <span class="text-[11px] font-semibold text-blue-300">Report ↗</span>
+        </div>
         <div class="mt-1 font-mono text-lg font-bold tabular-nums" :class="realizedPnlRaw >= 0 ? 'text-emerald-400' : 'text-rose-400'">{{ realizedPnl }}</div>
-        <div class="text-xs text-slate-500">Closed sells</div>
-      </div>
-      <div class="card-sm">
-        <div class="stat-label">Unrealized P&L</div>
+        <div class="text-xs text-slate-500">Closed sells · {{ pnlResetAt }}</div>
+      </button>
+      <button class="pnl-tile text-left" @click="openPnlReport" title="Open P&L report in a new tab">
+        <div class="stat-label">Unrealized P&amp;L</div>
         <div class="mt-1 font-mono text-lg font-bold tabular-nums" :class="unrealizedPnlRaw >= 0 ? 'text-emerald-400' : 'text-rose-400'">{{ unrealizedPnl }}</div>
-        <div class="text-xs text-slate-500">Open XRP</div>
-      </div>
-      <div class="card-sm">
-        <div class="stat-label">Total Trading P&L</div>
-        <div class="mt-1 font-mono text-lg font-bold tabular-nums" :class="totalPnlRaw >= 0 ? 'text-emerald-400' : 'text-rose-400'">{{ totalPnl }}</div>
-        <div class="text-xs text-slate-500">Realized + open</div>
+        <div class="text-xs text-slate-500">Open XRP · tap for detail</div>
+      </button>
+      <div class="pnl-tile">
+        <div class="flex items-center justify-between gap-2">
+          <div class="stat-label">Total Trading P&amp;L</div>
+          <button class="text-[11px] font-semibold text-blue-300 hover:text-blue-200 disabled:opacity-50" :disabled="resettingPnl" @click.stop="resetPnlCalculators">
+            {{ resettingPnl ? 'Resetting…' : 'Reset P&L' }}
+          </button>
+        </div>
+        <button class="mt-1 block w-full text-left font-mono text-lg font-bold tabular-nums" :class="totalPnlRaw >= 0 ? 'text-emerald-400' : 'text-rose-400'" @click="openPnlReport">{{ totalPnl }}</button>
+        <div class="text-xs text-slate-500">Realized + open · tap value</div>
       </div>
       <div class="card-sm">
         <div class="stat-label">Latest AI</div>

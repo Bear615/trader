@@ -15,6 +15,11 @@ const router = createRouter({
       component: () => import('@/views/Trades.vue'),
     },
     {
+      path: '/pnl',
+      name: 'pnl-report',
+      component: () => import('@/views/PnlReport.vue'),
+    },
+    {
       path: '/ai',
       name: 'ai',
       component: () => import('@/views/AIDecisions.vue'),

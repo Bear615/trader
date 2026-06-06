@@ -2,12 +2,15 @@
 import { onMounted, computed, ref } from 'vue'
 import { useTradesStore } from '@/stores/trades'
 import { useSettingsStore } from '@/stores/settings'
+import { usePortfolioStore } from '@/stores/portfolio'
 import { currencyCode, formatCurrency, formatDate, formatNumber } from '@/utils/format'
 import api from '@/api/client'
 
 const store = useTradesStore()
 const settingsStore = useSettingsStore()
+const portfolioStore = usePortfolioStore()
 const expandedTradeId = ref<number | null>(null)
+const resettingPnl = ref(false)
 
 const totalPages = computed(() => Math.ceil(store.total / store.perPage))
 const quoteCurrency = computed(() => currencyCode(settingsStore.settings['quote_currency']))
@@ -42,6 +45,21 @@ async function exportCsv() {
   URL.revokeObjectURL(url)
 }
 
+function openPnlReport() {
+  window.open('/pnl', '_blank', 'noopener,noreferrer')
+}
+
+async function resetPnlCalculators() {
+  if (resettingPnl.value) return
+  resettingPnl.value = true
+  try {
+    await portfolioStore.resetPnl()
+    await store.fetchTrades(store.page)
+  } finally {
+    resettingPnl.value = false
+  }
+}
+
 function pnlLabel(pnl: number | null) {
   if (pnl === null) return '-'
   return formatCurrency(Math.abs(pnl), quoteCurrency.value, 4).replace(/^/, pnl >= 0 ? '+' : '-')
@@ -65,12 +83,18 @@ function toggleTrade(id: number) {
         <h1 class="view-title">Trades</h1>
         <p class="view-subtitle">History as scan-friendly cards, with table detail retained on desktop.</p>
       </div>
-      <button @click="exportCsv" class="btn btn-ghost btn-sm shrink-0">
-        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M5 19h14" />
-        </svg>
-        Export
-      </button>
+      <div class="flex shrink-0 flex-col gap-2 sm:flex-row">
+        <button @click="openPnlReport" class="btn btn-primary btn-sm">P&amp;L report ↗</button>
+        <button @click="resetPnlCalculators" :disabled="resettingPnl" class="btn btn-ghost btn-sm">
+          {{ resettingPnl ? 'Resetting…' : 'Reset P&L' }}
+        </button>
+        <button @click="exportCsv" class="btn btn-ghost btn-sm">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M5 19h14" />
+          </svg>
+          Export
+        </button>
+      </div>
     </div>
 
     <section class="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -79,13 +103,13 @@ function toggleTrade(id: number) {
         <div class="mt-1 font-mono text-2xl font-bold tabular-nums text-slate-50">{{ store.total }}</div>
         <div class="text-xs text-slate-500">All time</div>
       </div>
-      <div class="card-sm">
-        <div class="stat-label">Visible P&amp;L</div>
+      <button class="pnl-tile text-left" @click="openPnlReport">
+        <div class="flex items-center justify-between gap-2"><div class="stat-label">Visible P&amp;L</div><span class="text-[11px] font-semibold text-blue-300">Report ↗</span></div>
         <div class="mt-1 font-mono text-2xl font-bold tabular-nums" :class="visiblePnlClass">
           {{ pnlLabel(visiblePnl) }}
         </div>
-        <div class="text-xs text-slate-500">This page</div>
-      </div>
+        <div class="text-xs text-slate-500">This page · tap for clean report</div>
+      </button>
       <div class="card-sm">
         <div class="stat-label">Buys</div>
         <div class="mt-1 font-mono text-2xl font-bold tabular-nums text-emerald-400">{{ buyCount }}</div>
