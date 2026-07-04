@@ -69,8 +69,10 @@ onUnmounted(() => {
 
       <main class="content-area">
         <RouterView v-slot="{ Component }">
-          <Transition name="page">
-            <component :is="Component" />
+          <Transition name="page" mode="out-in">
+            <KeepAlive>
+              <component :is="Component" />
+            </KeepAlive>
           </Transition>
         </RouterView>
       </main>

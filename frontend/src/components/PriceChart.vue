@@ -114,6 +114,17 @@ const chartOptions = computed(() => ({
   },
   dataLabels: { enabled: false },
   markers: { size: 0 },
+  // Shorter chart on phones so it doesn't dominate the viewport.
+  responsive: [
+    {
+      breakpoint: 640,
+      options: {
+        chart: { height: 240 },
+        yaxis: { labels: { style: { fontSize: '11px' } } },
+        grid: { padding: { right: 8, left: 2 } },
+      },
+    },
+  ],
 }))
 
 const series = computed(() => [
@@ -125,12 +136,12 @@ const series = computed(() => [
 </script>
 
 <template>
-  <div class="relative min-h-[285px]">
+  <div class="relative min-h-[240px] md:min-h-[285px]">
     <div v-if="loading" class="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-slate-950/50 backdrop-blur-sm">
       <div class="h-6 w-6 animate-spin rounded-full border-2 border-blue-400 border-t-transparent" />
     </div>
 
-    <div v-if="data.length === 0 && !loading" class="flex h-[285px] items-center justify-center rounded-xl border border-slate-700/40 bg-slate-950/25">
+    <div v-if="data.length === 0 && !loading" class="flex h-[240px] items-center justify-center rounded-xl border border-slate-700/40 bg-slate-950/25 md:h-[285px]">
       <p class="text-sm text-slate-500">No price data yet. Waiting for the next price poll.</p>
     </div>
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, computed, ref, watch } from 'vue'
+import { onMounted, onActivated, computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { usePriceStore } from '@/stores/price'
 import { usePortfolioStore } from '@/stores/portfolio'
@@ -73,6 +73,14 @@ onMounted(() => {
   loadAll()
   tradesStore.connectWebSocket()
   aiStore.connectWebSocket()
+})
+
+// The view is kept alive across tab switches, so onMounted only runs once.
+// Quietly refresh the account stats each time it's shown again (no chart
+// loading overlay — the live price feed keeps the graph current).
+onActivated(() => {
+  portfolioStore.fetchPortfolio()
+  portfolioStore.fetchMetrics()
 })
 
 watch(timeframe, () => priceStore.fetchHistory(timeframe.value))
@@ -200,7 +208,7 @@ const latestDecision = computed(() => aiStore.items[0])
       <PriceChart :data="priceStore.history" :loading="priceStore.loading" :quote-currency="quoteCurrency" />
     </section>
 
-    <section class="grid grid-cols-1 gap-3 md:grid-cols-5">
+    <section class="grid grid-cols-2 gap-3 md:grid-cols-5">
       <div class="card-sm">
         <div class="stat-label">Average Entry</div>
         <div class="mt-1 font-mono text-lg font-bold tabular-nums text-slate-50">{{ averageEntry }}</div>
