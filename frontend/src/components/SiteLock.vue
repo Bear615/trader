@@ -2,9 +2,11 @@
 import { onUnmounted, ref } from 'vue'
 import axios from 'axios'
 import { usePinPad, NUMPAD_KEYS } from '@/composables/usePinPad'
+import { useSettingsStore } from '@/stores/settings'
 
-const SESSION_KEY = 'site_unlocked'
 const emit = defineEmits<{ unlocked: [] }>()
+
+const settingsStore = useSettingsStore()
 
 const error = ref('')
 const loading = ref(false)
@@ -30,9 +32,10 @@ async function submit(pinValue: string) {
 
   try {
     await axios.post('/api/v1/auth/login', { pin: pinValue }, { withCredentials: true })
-    sessionStorage.removeItem('adminKey')
-    sessionStorage.setItem('adminSession', '1')
-    sessionStorage.setItem(SESSION_KEY, '1')
+    // Persist the session through the store so `isAdmin` (used by the router
+    // guard) reactively flips to true — otherwise protected routes keep
+    // redirecting back to /admin even though login succeeded.
+    settingsStore.setAdminKey('1')
     emit('unlocked')
   } catch (e: unknown) {
     reset()
